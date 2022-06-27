@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
@@ -14,7 +13,6 @@ import (
 	"github.com/ManuelReschke/go-pd/pkg/pd"
 	"image/color"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -32,7 +30,7 @@ const (
 	Headline = "PixelDrain.com Upload Tool"
 
 	FormLabel      = "API KEY:"
-	FormLabelInput = "*this is optional, if empty you make anonymous upload"
+	FormLabelInput = "*optional"
 
 	ButtonCopy   = "Copy"
 	ButtonUpload = "Upload"
@@ -48,8 +46,6 @@ func main() {
 	myApp := app.NewWithID(AppID)
 	myWindow := myApp.NewWindow(WindowTitle)
 	myWindow.Resize(fyne.NewSize(WindowWidth, WindowHeight))
-
-	fmt.Println(os.UserHomeDir())
 
 	// FORM INPUT API-KEY
 	formLabelAPIKey := canvas.NewText(FormLabel, color.White)
@@ -107,7 +103,7 @@ func main() {
 				// store user input
 				myApp.Preferences().SetString(SettingAPIKey, cleanKey)
 
-				pixelDrainURL, err := upload(closer.URI().Path(), cleanKey)
+				pixelDrainURL, err := upload(filepath.FromSlash(closer.URI().Path()), cleanKey)
 				if err != nil {
 					containerProgressBar.Hide()
 					dialog.ShowError(err, myWindow)

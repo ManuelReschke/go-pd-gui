@@ -7,5 +7,5 @@ build:
 	#env GOOS=windows GOARCH=amd64 CGO_ENABLED=1 go build -o bin/windows/go-pd-gui.exe
 	fyne-cross windows -arch=amd64,386
 	fyne-cross linux
-	fyne-cross android -arch=arm,arm64 -app-id com.gopdgui.app
+	fyne-cross android -arch=arm,arm64
 .PHONY: build
