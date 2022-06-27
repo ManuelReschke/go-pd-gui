@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
@@ -13,23 +14,50 @@ import (
 	"github.com/ManuelReschke/go-pd/pkg/pd"
 	"image/color"
 	"net/url"
+	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
-const VERSION = "v0.1.0"
+const (
+	Version      = "v0.1.0"
+	AppID        = "com.gopdgui.app"
+	WindowTitle  = "Go-PD-GUI - PixelDrain Upload Tool"
+	WindowWidth  = 550
+	WindowHeight = 600
+
+	SettingAPIKey = "setting.apikey"
+
+	Headline = "PixelDrain.com Upload Tool"
+
+	FormLabel      = "API KEY:"
+	FormLabelInput = "*this is optional, if empty you make anonymous upload"
+
+	ButtonCopy   = "Copy"
+	ButtonUpload = "Upload"
+
+	EmptyString = ""
+
+	AssetLogo = "assets/go-pd-gui-logo.png"
+
+	FooterText = "This tool was made by Manuel Reschke under MIT Licence. "
+)
 
 func main() {
-	myApp := app.New()
-	myWindow := myApp.NewWindow("Go-PD-GUI - PixelDrain Upload Tool")
-	myWindow.Resize(fyne.NewSize(550, 600))
+	myApp := app.NewWithID(AppID)
+	myWindow := myApp.NewWindow(WindowTitle)
+	myWindow.Resize(fyne.NewSize(WindowWidth, WindowHeight))
 
-	headline := canvas.NewText("PixelDrain.com Upload Tool", color.White)
-	containerHeading := container.New(layout.NewCenterLayout(), headline)
+	fmt.Println(os.UserHomeDir())
 
-	formLabelAPIKey := canvas.NewText("API KEY:", color.White)
+	// FORM INPUT API-KEY
+	formLabelAPIKey := canvas.NewText(FormLabel, color.White)
 	inputAPIey := widget.NewEntry()
-	inputAPIey.SetPlaceHolder("Enter text...")
+	inputAPIey.SetPlaceHolder(FormLabelInput)
+	apiKeyBinding := binding.NewString()
+	_ = apiKeyBinding.Set(myApp.Preferences().StringWithFallback(SettingAPIKey, ""))
+	inputAPIey.Bind(apiKeyBinding)
 	containerForm := container.New(layout.NewFormLayout(), formLabelAPIKey, inputAPIey)
 	containerForm.Resize(fyne.NewSize(0, 200))
 
@@ -41,7 +69,7 @@ func main() {
 	containerCopySuccess.Hide()
 
 	// LINK RESULT
-	copyLinkButton := widget.NewButtonWithIcon("Copy", theme.ContentCopyIcon(), func() {
+	copyLinkButton := widget.NewButtonWithIcon(ButtonCopy, theme.ContentCopyIcon(), func() {
 		if content, err := linkBound.Get(); err == nil {
 			myWindow.Clipboard().SetContent(content)
 			containerCopySuccess.Show()
@@ -55,7 +83,7 @@ func main() {
 	})
 	containerLinkText := container.New(layout.NewCenterLayout(), copyLinkButton)
 
-	resultWidget := widget.NewHyperlink("", nil)
+	resultWidget := widget.NewHyperlink(EmptyString, nil)
 	containerLinkBox := container.New(layout.NewCenterLayout(), resultWidget)
 
 	resultContainer := container.New(layout.NewHBoxLayout(), containerLinkBox, containerLinkText, containerCopySuccess)
@@ -67,27 +95,24 @@ func main() {
 	containerProgressBar.Hide() // hide per default
 
 	// UPLOAD BUTTON ACTION
-	uploadButton := widget.NewButtonWithIcon("Upload", theme.UploadIcon(), func() {
-		pixelDrainURL := ""
+	uploadButton := widget.NewButtonWithIcon(ButtonUpload, theme.UploadIcon(), func() {
 		fileOpen := dialog.NewFileOpen(func(closer fyne.URIReadCloser, err error) {
 			if closer != nil {
 				defer closer.Close()
 				containerProgressBar.Show()
 
-				req := &pd.RequestUpload{
-					PathToFile: closer.URI().Path(),
-					Anonymous:  true,
-				}
+				key, _ := apiKeyBinding.Get()
+				cleanKey := strings.TrimSpace(key)
 
-				c := pd.New(nil, nil)
-				rsp, err := c.UploadPOST(req)
+				// store user input
+				myApp.Preferences().SetString(SettingAPIKey, cleanKey)
+
+				pixelDrainURL, err := upload(closer.URI().Path(), cleanKey)
 				if err != nil {
 					containerProgressBar.Hide()
 					dialog.ShowError(err, myWindow)
 					return
 				}
-
-				pixelDrainURL = rsp.GetFileURL()
 
 				_ = linkBound.Set(pixelDrainURL) // set Link
 				parsedURL, _ := url.Parse(pixelDrainURL)
@@ -107,7 +132,7 @@ func main() {
 		layout.NewVBoxLayout(),
 		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), buildLogo(), layout.NewSpacer()),
 		layout.NewSpacer(),
-		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), containerHeading, layout.NewSpacer()),
+		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), buildHeader(), layout.NewSpacer()),
 		container.New(layout.NewVBoxLayout(), layout.NewSpacer(), containerForm, layout.NewSpacer()),
 		layout.NewSpacer(),
 		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), containerButton, layout.NewSpacer()),
@@ -123,7 +148,7 @@ func main() {
 }
 
 func buildLogo() *fyne.Container {
-	image := canvas.NewImageFromFile(filepath.FromSlash("assets/go-pd-gui-logo.png"))
+	image := canvas.NewImageFromFile(filepath.FromSlash(AssetLogo))
 	image.SetMinSize(fyne.NewSize(361, 152))
 	image.FillMode = canvas.ImageFillStretch
 	containerLogo := container.New(layout.NewCenterLayout(), image)
@@ -131,9 +156,14 @@ func buildLogo() *fyne.Container {
 	return containerLogo
 }
 
+func buildHeader() *fyne.Container {
+	headline := canvas.NewText(Headline, color.White)
+	return container.New(layout.NewCenterLayout(), headline)
+}
+
 func buildCopyright() *fyne.Container {
 	colorLightSilver := color.RGBA{R: 79, G: 79, B: 79, A: 0}
-	copyright := canvas.NewText("This tool was made by Manuel Reschke under MIT Licence. "+VERSION, colorLightSilver)
+	copyright := canvas.NewText(FooterText+Version, colorLightSilver)
 	copyright.TextSize = 11
 	containerEnd := container.New(layout.NewCenterLayout(), copyright)
 	containerEnd.Resize(fyne.NewSize(0, 50))
@@ -141,7 +171,21 @@ func buildCopyright() *fyne.Container {
 	return containerEnd
 }
 
-func upload() (string, error) {
-	//err := errors.New("test error")
-	return "https://pixeldrain.com/u/YqiUjXBc", nil
+func upload(filepath string, key string) (string, error) {
+	req := &pd.RequestUpload{
+		PathToFile: filepath,
+		Anonymous:  true,
+	}
+	if key != "" {
+		req.Anonymous = false
+		req.Auth.APIKey = key
+	}
+
+	c := pd.New(nil, nil)
+	rsp, err := c.UploadPOST(req)
+	if err != nil {
+		return "", err
+	}
+
+	return rsp.GetFileURL(), nil
 }

@@ -6,10 +6,13 @@ require fyne.io/fyne/v2 v2.2.1
 
 require (
 	fyne.io/systray v1.10.0 // indirect
+	github.com/BurntSushi/toml v1.1.0 // indirect
+	github.com/Kodeworks/golang-image-ico v0.0.0-20141118225523-73f0f4cfade9 // indirect
 	github.com/ManuelReschke/go-pd v0.0.0-20220616150817-36eff180e812 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fredbi/uri v0.0.0-20181227131451-3dcfdacbaaf3 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
+	github.com/fyne-io/fyne-cross v1.2.1 // indirect
 	github.com/fyne-io/gl-js v0.0.0-20220516203408-b35fbccb7063 // indirect
 	github.com/fyne-io/glfw-js v0.0.0-20220517201726-bebc2019cd33 // indirect
 	github.com/fyne-io/image v0.0.0-20220602074514-4956b0afb3d2 // indirect
