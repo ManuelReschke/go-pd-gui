@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
@@ -103,7 +104,7 @@ func main() {
 				// store user input
 				myApp.Preferences().SetString(SettingAPIKey, cleanKey)
 
-				pixelDrainURL, err := upload(filepath.FromSlash(closer.URI().Path()), cleanKey)
+				pixelDrainURL, err := upload(closer, cleanKey)
 				if err != nil {
 					containerProgressBar.Hide()
 					dialog.ShowError(err, myWindow)
@@ -167,10 +168,16 @@ func buildCopyright() *fyne.Container {
 	return containerEnd
 }
 
-func upload(filepath string, key string) (string, error) {
+func upload(urc fyne.URIReadCloser, key string) (string, error) {
+	fileName := urc.URI().Name()
+	if fileName == "" {
+		return "", errors.New("filename can not be empty")
+	}
+
 	req := &pd.RequestUpload{
-		PathToFile: filepath,
-		Anonymous:  true,
+		File:      urc,
+		FileName:  fileName,
+		Anonymous: true,
 	}
 	if key != "" {
 		req.Anonymous = false
