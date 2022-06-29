@@ -9,10 +9,12 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/ManuelReschke/go-pd/pkg/pd"
 	"image/color"
+	"io/ioutil"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -104,19 +106,35 @@ func main() {
 				// store user input
 				myApp.Preferences().SetString(SettingAPIKey, cleanKey)
 
-				pixelDrainURL, err := upload(closer, cleanKey)
+				canRead, err := storage.CanRead(closer.URI())
 				if err != nil {
 					containerProgressBar.Hide()
 					dialog.ShowError(err, myWindow)
 					return
 				}
 
-				_ = linkBound.Set(pixelDrainURL) // set Link
-				parsedURL, _ := url.Parse(pixelDrainURL)
-				resultWidget.SetText(pixelDrainURL)
-				resultWidget.SetURL(parsedURL)
-				resultContainer.Show()
-				containerProgressBar.Hide()
+				if canRead {
+					r, err := storage.Reader(closer.URI())
+					if err != nil {
+						containerProgressBar.Hide()
+						dialog.ShowError(err, myWindow)
+						return
+					}
+
+					pixelDrainURL, err := upload(r, cleanKey)
+					if err != nil {
+						containerProgressBar.Hide()
+						dialog.ShowError(err, myWindow)
+						return
+					}
+
+					_ = linkBound.Set(pixelDrainURL) // set Link
+					parsedURL, _ := url.Parse(pixelDrainURL)
+					resultWidget.SetText(pixelDrainURL)
+					resultWidget.SetURL(parsedURL)
+					resultContainer.Show()
+					containerProgressBar.Hide()
+				}
 			}
 			return
 		}, myWindow)
@@ -127,7 +145,7 @@ func main() {
 
 	container00 := container.New(
 		layout.NewVBoxLayout(),
-		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), buildLogo(), layout.NewSpacer()),
+		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), buildLogo(myWindow), layout.NewSpacer()),
 		layout.NewSpacer(),
 		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), buildHeader(), layout.NewSpacer()),
 		container.New(layout.NewVBoxLayout(), layout.NewSpacer(), containerForm, layout.NewSpacer()),
@@ -144,8 +162,15 @@ func main() {
 	myWindow.ShowAndRun()
 }
 
-func buildLogo() *fyne.Container {
-	image := canvas.NewImageFromFile(filepath.FromSlash(AssetLogo))
+func buildLogo(myWindow fyne.Window) *fyne.Container {
+	data, err := ioutil.ReadFile(filepath.FromSlash(AssetLogo))
+	if err != nil {
+		dialog.ShowError(err, myWindow)
+		return nil
+	}
+
+	staticImage := fyne.NewStaticResource("logo.png", data)
+	image := canvas.NewImageFromResource(staticImage)
 	image.SetMinSize(fyne.NewSize(361, 152))
 	image.FillMode = canvas.ImageFillStretch
 	containerLogo := container.New(layout.NewCenterLayout(), image)
