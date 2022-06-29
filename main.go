@@ -14,9 +14,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/ManuelReschke/go-pd/pkg/pd"
 	"image/color"
-	"io/ioutil"
 	"net/url"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -163,14 +161,14 @@ func main() {
 }
 
 func buildLogo(myWindow fyne.Window) *fyne.Container {
-	data, err := ioutil.ReadFile(filepath.FromSlash(AssetLogo))
-	if err != nil {
-		dialog.ShowError(err, myWindow)
-		return nil
-	}
-
-	staticImage := fyne.NewStaticResource("logo.png", data)
-	image := canvas.NewImageFromResource(staticImage)
+	//data, err := ioutil.ReadFile(filepath.FromSlash(AssetLogo))
+	//if err != nil {
+	//	dialog.ShowError(err, myWindow)
+	//	return nil
+	//}
+	//
+	//staticImage := fyne.NewStaticResource("logo.png", data)
+	image := canvas.NewImageFromResource(resourceGoPdGuiLogoPng)
 	image.SetMinSize(fyne.NewSize(361, 152))
 	image.FillMode = canvas.ImageFillStretch
 	containerLogo := container.New(layout.NewCenterLayout(), image)

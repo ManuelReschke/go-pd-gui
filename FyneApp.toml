@@ -5,4 +5,4 @@ Website = "https://github.com/ManuelReschke/go-pd-gui"
   Name = "Go-PD-GUI"
   ID = "com.gopdgui.app"
   Version = "0.1.0"
-  Build = 29
+  Build = 36
