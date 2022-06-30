@@ -20,9 +20,9 @@ import (
 )
 
 const (
-	Version      = "v0.1.0"
+	Version      = "v1.0.0"
 	AppID        = "com.gopdgui.app"
-	WindowTitle  = "Go-PD-GUI - PixelDrain Upload Tool"
+	WindowTitle  = "Go-PD-GUI - DRAINY - PixelDrain Upload Tool"
 	WindowWidth  = 550
 	WindowHeight = 600
 
@@ -168,8 +168,8 @@ func buildLogo(myWindow fyne.Window) *fyne.Container {
 	//}
 	//
 	//staticImage := fyne.NewStaticResource("logo.png", data)
-	image := canvas.NewImageFromResource(resourceGoPdGuiLogoPng)
-	image.SetMinSize(fyne.NewSize(361, 152))
+	image := canvas.NewImageFromResource(resourceGoPdGuiIconPng)
+	image.SetMinSize(fyne.NewSize(256, 256))
 	image.FillMode = canvas.ImageFillStretch
 	containerLogo := container.New(layout.NewCenterLayout(), image)
 

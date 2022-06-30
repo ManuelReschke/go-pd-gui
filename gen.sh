@@ -1,2 +1,2 @@
 #!/bin/bash
-fyne bundle assets/go-pd-gui-logo.png > bundled.go
+fyne bundle assets/go-pd-gui-icon.png > bundled.go
