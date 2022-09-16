@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
@@ -20,43 +21,71 @@ import (
 )
 
 const (
-	Version      = "v1.0.0"
-	AppID        = "com.gopdgui.app"
-	WindowTitle  = "Go-PD-GUI - DRAINY - PixelDrain Upload Tool"
-	WindowWidth  = 550
-	WindowHeight = 600
-
-	SettingAPIKey = "setting.apikey"
-
-	Headline = "PixelDrain.com Upload Tool"
-
+	Version        = "v1.1.0"
+	AppID          = "com.gopdgui.app"
+	WindowTitle    = "Go-PD-GUI - DRAINY - PixelDrain Upload Tool"
+	WindowWidth    = 550
+	WindowHeight   = 600
+	SettingAPIKey  = "setting.apikey"
+	Headline       = "PixelDrain.com Upload Tool"
 	FormLabel      = "API KEY:"
 	FormLabelInput = "*optional"
-
-	ButtonCopy   = "Copy"
-	ButtonUpload = "Upload"
-
-	EmptyString = ""
-
-	AssetLogo = "assets/go-pd-gui-logo.png"
-
-	FooterText = "This tool was made by Manuel Reschke under MIT Licence. "
+	ButtonCopy     = "Copy"
+	ButtonUpload   = "Upload"
+	EmptyString    = ""
+	FooterText     = "This tool was made by Manuel Reschke under MIT Licence. "
+	AboutText      = "@Author: Manuel Reschke\n " +
+		"@Github: https://github.com/ManuelReschke/go-pd-gui\n\n " +
+		"This tool was made by Manuel Reschke under MIT Licence.\n\n " +
+		"Version: " + Version
 )
 
-func main() {
-	myApp := app.NewWithID(AppID)
-	myWindow := myApp.NewWindow(WindowTitle)
-	myWindow.Resize(fyne.NewSize(WindowWidth, WindowHeight))
+type Settings struct {
+	APIKey binding.String
+}
 
-	// FORM INPUT API-KEY
-	formLabelAPIKey := canvas.NewText(FormLabel, color.White)
-	inputAPIey := widget.NewEntry()
-	inputAPIey.SetPlaceHolder(FormLabelInput)
-	apiKeyBinding := binding.NewString()
-	_ = apiKeyBinding.Set(myApp.Preferences().StringWithFallback(SettingAPIKey, ""))
-	inputAPIey.Bind(apiKeyBinding)
-	containerForm := container.New(layout.NewFormLayout(), formLabelAPIKey, inputAPIey)
-	containerForm.Resize(fyne.NewSize(0, 200))
+type UploadHistory struct {
+	UploadDate time.Time
+	FileName   string
+	URL        string
+}
+
+type Storage struct {
+	LastElement   UploadHistory
+	UploadHistory []UploadHistory
+}
+
+type AppData struct {
+	App      fyne.App
+	Window   fyne.Window
+	Settings Settings
+	Storage  Storage
+}
+
+var MyApp AppData
+
+func main() {
+	MyApp.App = app.NewWithID(AppID)
+	MyApp.App.Settings().SetTheme(theme.DarkTheme())
+
+	MyApp.Window = MyApp.App.NewWindow(WindowTitle)
+	MyApp.Window.Resize(fyne.NewSize(WindowWidth, WindowHeight))
+
+	MyApp.Settings.APIKey = binding.NewString()
+	fmt.Println(MyApp.Settings.APIKey)
+	_ = MyApp.Settings.APIKey.Set("TEST")
+	fmt.Println(MyApp.Settings.APIKey)
+	a, _ := MyApp.Settings.APIKey.Get()
+	fmt.Println(a)
+
+	// Main Menu
+	MyApp.Settings.APIKey = binding.NewString()
+	menuItemSettings := fyne.NewMenuItem("Settings", menuActionSettings)
+	menuItemAbout := fyne.NewMenuItem("About", menuActionAbout)
+
+	test := fyne.NewMenu("> Menu", menuItemSettings, menuItemAbout)
+	mainMenu := fyne.NewMainMenu(test)
+	MyApp.Window.SetMainMenu(mainMenu)
 
 	// binding result link
 	linkBound := binding.NewString()
@@ -68,7 +97,7 @@ func main() {
 	// LINK RESULT
 	copyLinkButton := widget.NewButtonWithIcon(ButtonCopy, theme.ContentCopyIcon(), func() {
 		if content, err := linkBound.Get(); err == nil {
-			myWindow.Clipboard().SetContent(content)
+			MyApp.Window.Clipboard().SetContent(content)
 			containerCopySuccess.Show()
 			go func() {
 				if containerCopySuccess.Visible() {
@@ -98,16 +127,16 @@ func main() {
 				defer closer.Close()
 				containerProgressBar.Show()
 
-				key, _ := apiKeyBinding.Get()
-				cleanKey := strings.TrimSpace(key)
-
-				// store user input
-				myApp.Preferences().SetString(SettingAPIKey, cleanKey)
+				key, _ := MyApp.Settings.APIKey.Get()
+				//cleanKey := strings.TrimSpace(key)
+				//
+				//// store user input
+				//MyApp.App.Preferences().SetString(SettingAPIKey, cleanKey)
 
 				canRead, err := storage.CanRead(closer.URI())
 				if err != nil {
 					containerProgressBar.Hide()
-					dialog.ShowError(err, myWindow)
+					dialog.ShowError(err, MyApp.Window)
 					return
 				}
 
@@ -115,14 +144,14 @@ func main() {
 					r, err := storage.Reader(closer.URI())
 					if err != nil {
 						containerProgressBar.Hide()
-						dialog.ShowError(err, myWindow)
+						dialog.ShowError(err, MyApp.Window)
 						return
 					}
 
-					pixelDrainURL, err := upload(r, cleanKey)
+					pixelDrainURL, err := upload(r, key)
 					if err != nil {
 						containerProgressBar.Hide()
-						dialog.ShowError(err, myWindow)
+						dialog.ShowError(err, MyApp.Window)
 						return
 					}
 
@@ -132,42 +161,69 @@ func main() {
 					resultWidget.SetURL(parsedURL)
 					resultContainer.Show()
 					containerProgressBar.Hide()
+
+					// save last element in storage
+					lastElement := UploadHistory{
+						UploadDate: time.Now(),
+						FileName:   "image",
+						URL:        pixelDrainURL,
+					}
+					MyApp.Storage.LastElement = lastElement
 				}
 			}
 			return
-		}, myWindow)
+		}, MyApp.Window)
 		fileOpen.Resize(fyne.NewSize(600, 600))
 		fileOpen.Show()
 	})
 	containerButton := container.New(layout.NewCenterLayout(), uploadButton)
 
+	// History Container
+	data := []string{"test test test test", "test test"}
+	historyList := widget.NewList(
+		func() int {
+			return len(data)
+		},
+		func() fyne.CanvasObject {
+			w := widget.NewLabel("template")
+			return w
+		},
+		func(i widget.ListItemID, o fyne.CanvasObject) {
+			o.(*widget.Label).SetText(data[i])
+		})
+
+	testButton := widget.NewButtonWithIcon("Show History", theme.InfoIcon(), func() {
+		window := MyApp.App.NewWindow("test")
+		content := container.New(layout.NewBorderLayout(nil, nil, nil, nil), historyList)
+		window.SetContent(content)
+		window.Resize(fyne.NewSize(480, 380))
+		window.Show()
+	})
+
+	uploadHistoryContainer := container.New(layout.NewCenterLayout(), testButton)
+
 	container00 := container.New(
 		layout.NewVBoxLayout(),
-		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), buildLogo(myWindow), layout.NewSpacer()),
+		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), buildLogo(), layout.NewSpacer()),
 		layout.NewSpacer(),
 		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), buildHeader(), layout.NewSpacer()),
-		container.New(layout.NewVBoxLayout(), layout.NewSpacer(), containerForm, layout.NewSpacer()),
+		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), buildHeader2(), layout.NewSpacer()),
 		layout.NewSpacer(),
 		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), containerButton, layout.NewSpacer()),
 		containerProgressBar,
 		layout.NewSpacer(),
 		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), resultContainer, layout.NewSpacer()),
 		layout.NewSpacer(),
+		uploadHistoryContainer,
+		layout.NewSpacer(),
 		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), buildCopyright(), layout.NewSpacer()),
 	)
 
-	myWindow.SetContent(container00)
-	myWindow.ShowAndRun()
+	MyApp.Window.SetContent(container00)
+	MyApp.Window.ShowAndRun()
 }
 
-func buildLogo(myWindow fyne.Window) *fyne.Container {
-	//data, err := ioutil.ReadFile(filepath.FromSlash(AssetLogo))
-	//if err != nil {
-	//	dialog.ShowError(err, myWindow)
-	//	return nil
-	//}
-	//
-	//staticImage := fyne.NewStaticResource("logo.png", data)
+func buildLogo() *fyne.Container {
 	image := canvas.NewImageFromResource(resourceGoPdGuiIconPng)
 	image.SetMinSize(fyne.NewSize(256, 256))
 	image.FillMode = canvas.ImageFillStretch
@@ -179,6 +235,11 @@ func buildLogo(myWindow fyne.Window) *fyne.Container {
 func buildHeader() *fyne.Container {
 	headline := canvas.NewText(Headline, color.White)
 	return container.New(layout.NewCenterLayout(), headline)
+}
+
+func buildHeader2() *fyne.Container {
+	headline2 := canvas.NewText("Hello Anonym, lets upload some files!", color.White)
+	return container.New(layout.NewCenterLayout(), headline2)
 }
 
 func buildCopyright() *fyne.Container {
@@ -214,4 +275,38 @@ func upload(urc fyne.URIReadCloser, key string) (string, error) {
 	}
 
 	return rsp.GetFileURL(), nil
+}
+
+// handle the settings window
+func menuActionSettings() {
+	w := MyApp.App.NewWindow("Settings")
+
+	// FORM INPUT API-KEY
+	formLabelAPIKey := canvas.NewText(FormLabel, color.White)
+
+	inputAPIey := widget.NewEntry()
+	inputAPIey.SetPlaceHolder(FormLabelInput)
+	//MyApp.Settings.APIKey = binding.NewString()
+	_ = MyApp.Settings.APIKey.Set(MyApp.App.Preferences().StringWithFallback(SettingAPIKey, ""))
+	inputAPIey.Bind(MyApp.Settings.APIKey)
+
+	containerForm := container.New(layout.NewFormLayout(), formLabelAPIKey, inputAPIey)
+	containerForm.Resize(fyne.NewSize(0, 200))
+
+	closeButton := widget.NewButtonWithIcon("Save", theme.ContentClearIcon(), func() {
+		key, _ := MyApp.Settings.APIKey.Get()
+		MyApp.App.Preferences().SetString(SettingAPIKey, strings.TrimSpace(key)) // store user input
+		w.Hide()
+	})
+	containerButton := container.New(layout.NewCenterLayout(), closeButton)
+
+	content := container.New(layout.NewVBoxLayout(), containerForm, layout.NewSpacer(), containerButton)
+
+	w.SetContent(content)
+	w.Resize(fyne.NewSize(480, 380))
+	w.Show()
+}
+
+func menuActionAbout() {
+	dialog.ShowInformation("About", AboutText, MyApp.Window)
 }

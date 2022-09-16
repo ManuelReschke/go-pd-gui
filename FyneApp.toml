@@ -5,4 +5,4 @@ Website = "https://github.com/ManuelReschke/go-pd-gui"
   Name = "DRAINY"
   ID = "com.gopdgui.app"
   Version = "1.0.0"
-  Build = 43
+  Build = 50

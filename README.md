@@ -20,11 +20,15 @@ Binaries for Windows, Linux and Android are available under the /fyne-cross fold
 
 ### Features:
 
-* upload to pixeldrain
+* upload to pixeldrain (with infinite progress bar)
 * support auth via API-Key (*optional)
   * save and load API-Key from user settings
 * output file url
 * "Copy" button to copy link easily
+
+### ToDos:
+
+* [ ] implement real progress bar (1 .. 100)
 
 ## License
 
