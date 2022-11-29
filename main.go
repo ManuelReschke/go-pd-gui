@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
@@ -51,6 +50,7 @@ type UploadHistory struct {
 }
 
 type Storage struct {
+	Username      string
 	LastElement   UploadHistory
 	UploadHistory []UploadHistory
 }
@@ -72,11 +72,11 @@ func main() {
 	MyApp.Window.Resize(fyne.NewSize(WindowWidth, WindowHeight))
 
 	MyApp.Settings.APIKey = binding.NewString()
-	fmt.Println(MyApp.Settings.APIKey)
-	_ = MyApp.Settings.APIKey.Set("TEST")
-	fmt.Println(MyApp.Settings.APIKey)
-	a, _ := MyApp.Settings.APIKey.Get()
-	fmt.Println(a)
+	//fmt.Println(MyApp.Settings.APIKey)
+	//_ = MyApp.Settings.APIKey.Set("TEST")
+	//fmt.Println(MyApp.Settings.APIKey)
+	//a, _ := MyApp.Settings.APIKey.Get()
+	//fmt.Println(a)
 
 	// Main Menu
 	MyApp.Settings.APIKey = binding.NewString()
@@ -119,6 +119,10 @@ func main() {
 	progressBar := widget.NewProgressBarInfinite()
 	containerProgressBar := container.New(layout.NewVBoxLayout(), layout.NewSpacer(), progressBar, layout.NewSpacer())
 	containerProgressBar.Hide() // hide per default
+
+	// LAST ELEMENT
+	lastElementContainer := container.New(layout.NewHBoxLayout())
+	lastElementContainer.Hide()
 
 	// UPLOAD BUTTON ACTION
 	uploadButton := widget.NewButtonWithIcon(ButtonUpload, theme.UploadIcon(), func() {
@@ -165,10 +169,18 @@ func main() {
 					// save last element in storage
 					lastElement := UploadHistory{
 						UploadDate: time.Now(),
-						FileName:   "image",
+						FileName:   r.URI().Name(),
 						URL:        pixelDrainURL,
 					}
 					MyApp.Storage.LastElement = lastElement
+
+					// show last element
+					lastElementURLParsed, _ := url.Parse(pixelDrainURL)
+					lastElementText := canvas.NewText("Last upload:", color.White)
+					lastElementLink := widget.NewHyperlink(MyApp.Storage.LastElement.FileName, lastElementURLParsed)
+					lastElementContainer.Add(lastElementText)
+					lastElementContainer.Add(lastElementLink)
+					lastElementContainer.Show()
 				}
 			}
 			return
@@ -177,30 +189,6 @@ func main() {
 		fileOpen.Show()
 	})
 	containerButton := container.New(layout.NewCenterLayout(), uploadButton)
-
-	// History Container
-	data := []string{"test test test test", "test test"}
-	historyList := widget.NewList(
-		func() int {
-			return len(data)
-		},
-		func() fyne.CanvasObject {
-			w := widget.NewLabel("template")
-			return w
-		},
-		func(i widget.ListItemID, o fyne.CanvasObject) {
-			o.(*widget.Label).SetText(data[i])
-		})
-
-	testButton := widget.NewButtonWithIcon("Show History", theme.InfoIcon(), func() {
-		window := MyApp.App.NewWindow("test")
-		content := container.New(layout.NewBorderLayout(nil, nil, nil, nil), historyList)
-		window.SetContent(content)
-		window.Resize(fyne.NewSize(480, 380))
-		window.Show()
-	})
-
-	uploadHistoryContainer := container.New(layout.NewCenterLayout(), testButton)
 
 	container00 := container.New(
 		layout.NewVBoxLayout(),
@@ -214,7 +202,9 @@ func main() {
 		layout.NewSpacer(),
 		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), resultContainer, layout.NewSpacer()),
 		layout.NewSpacer(),
-		uploadHistoryContainer,
+		buildUploadHistoryContainer(),
+		layout.NewSpacer(),
+		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), lastElementContainer, layout.NewSpacer()),
 		layout.NewSpacer(),
 		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), buildCopyright(), layout.NewSpacer()),
 	)
@@ -250,6 +240,66 @@ func buildCopyright() *fyne.Container {
 	containerEnd.Resize(fyne.NewSize(0, 50))
 
 	return containerEnd
+}
+
+func buildUploadHistoryContainer() *fyne.Container {
+	// History Container
+	data := []string{"12.12.2022 | http://pixeldrain.com/kajsdjaksjd", "12.12.2022 | http://pixeldrain.com/kajsdjaksjd", "12.12.2022 | http://pixeldrain.com/kajsdjaksjd"}
+	list := widget.NewList(
+		func() int {
+			return len(data)
+		},
+		func() fyne.CanvasObject {
+			return widget.NewLabel("template")
+		},
+		func(i widget.ListItemID, o fyne.CanvasObject) {
+			o.(*widget.Label).SetText(data[i])
+		})
+	// History Container
+	//data := [][]string{
+	//	[]string{"#", "Date", "Link"},
+	//	[]string{"12.03.2022", "ahsakshdhakshd", "http://pixeldrain.com/kajsdjaksjd"},
+	//	//[]string{"12.03.2022", "ahsakshdhakshd", "http://pixeldrain.com/kajsdjaksjd"},
+	//}
+	//historyList := widget.NewTable(
+	//	func() (int, int) {
+	//		return len(data), len(data[0])
+	//	},
+	//	func() fyne.CanvasObject {
+	//		c := container.NewCenter()
+	//		return c
+	//		//w := widget.NewLabel("Template")
+	//		//return w
+	//	},
+	//	func(i widget.TableCellID, o fyne.CanvasObject) {
+	//		if i.Col == 0 && i.Row > 0 {
+	//			w := widget.NewButton("#", func() {
+	//				fmt.Println("click")
+	//			})
+	//			o.(*fyne.Container).Add(w)
+	//			o.(*fyne.Container).Resize(fyne.NewSize(100, 100))
+	//			return
+	//		}
+	//
+	//		w := widget.NewLabel(data[i.Row][i.Col])
+	//		o.(*fyne.Container).Add(w)
+	//		//o.(*fyne.Container).Resize(fyne.NewSize(100, 100))
+	//
+	//		//o.(*widget.Label).SetText(data[i.Row][i.Col])
+	//	})
+	//historyList.SetColumnWidth(0, 250)
+	//historyList.SetColumnWidth(1, 350)
+
+	testButton := widget.NewButtonWithIcon("Show History", theme.InfoIcon(), func() {
+		window := MyApp.App.NewWindow("History")
+		//content := container.New(layout.NewCenterLayout(), list)
+		window.SetContent(list)
+		//window.Resize(fyne.NewSize(480, 380))
+		window.Resize(fyne.NewSize(600, 380))
+		window.Show()
+	})
+
+	return container.New(layout.NewCenterLayout(), testButton)
 }
 
 func upload(urc fyne.URIReadCloser, key string) (string, error) {
