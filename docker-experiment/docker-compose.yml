@@ -1,0 +1,12 @@
+version: "3.8"
+services:
+  go-app:
+    container_name: "go-app"
+    build:
+      context: .
+      dockerfile: ./docker/go/Dockerfile
+    volumes:
+      - .:/go/src/app
+    working_dir: /go/src/app
+    ports:
+      - "8881:8881"

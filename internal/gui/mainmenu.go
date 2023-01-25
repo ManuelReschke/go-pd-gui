@@ -9,6 +9,10 @@ const (
 	MenuItemMain         = "> Menu"
 	MenuItemMainSettings = "Settings"
 	MenuItemMainAbout    = "About"
+	AboutText            = "@Author: Manuel Reschke\n " +
+		"@Github: https://github.com/ManuelReschke/go-pd-gui\n\n " +
+		"This tool was made by Manuel Reschke under MIT Licence.\n\n " +
+		"Version: " + Version
 )
 
 func BuildMainMenu() *fyne.MainMenu {

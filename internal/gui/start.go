@@ -2,6 +2,10 @@ package gui
 
 import (
 	"errors"
+	"image/color"
+	"net/url"
+	"time"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
@@ -13,9 +17,6 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/ManuelReschke/go-pd/pkg/pd"
-	"image/color"
-	"net/url"
-	"time"
 )
 
 const (
@@ -25,17 +26,11 @@ const (
 	WindowWidth  = 550
 	WindowHeight = 600
 
-	Headline       = "PixelDrain.com Upload Tool"
-	FormLabel      = "API KEY:"
-	FormLabelInput = "*optional"
-	ButtonCopy     = "Copy"
-	ButtonUpload   = "Upload"
-	EmptyString    = ""
-	FooterText     = "This tool was made by Manuel Reschke under MIT Licence. "
-	AboutText      = "@Author: Manuel Reschke\n " +
-		"@Github: https://github.com/ManuelReschke/go-pd-gui\n\n " +
-		"This tool was made by Manuel Reschke under MIT Licence.\n\n " +
-		"Version: " + Version
+	Headline     = "PixelDrain.com Upload Tool"
+	ButtonCopy   = "Copy"
+	ButtonUpload = "Upload"
+	EmptyString  = ""
+	FooterText   = "This tool was made by Manuel Reschke under MIT Licence. "
 )
 
 type Settings struct {
@@ -57,10 +52,11 @@ type Storage struct {
 }
 
 type AppData struct {
-	App      fyne.App
-	Window   fyne.Window
-	Settings Settings
-	Storage  Storage
+	App        fyne.App
+	Window     fyne.Window
+	Containers map[string]*fyne.Container
+	Settings   Settings
+	Storage    Storage
 }
 
 var MyApp AppData
@@ -125,10 +121,10 @@ func BuildStart() {
 				containerProgressBar.Show()
 
 				key, _ := MyApp.Settings.APIKey.Get()
-				//cleanKey := strings.TrimSpace(key)
+				// cleanKey := strings.TrimSpace(key)
 				//
-				//// store user input
-				//MyApp.App.Preferences().SetString(SettingAPIKey, cleanKey)
+				// // store user input
+				// MyApp.App.Preferences().SetString(SettingAPIKey, cleanKey)
 
 				canRead, err := storage.CanRead(closer.URI())
 				if err != nil {
@@ -183,12 +179,16 @@ func BuildStart() {
 	})
 	containerButton := container.New(layout.NewCenterLayout(), uploadButton)
 
+	// set the container to the app to update text later with refresh
+	header2Container := buildHeader2()
+	MyApp.Containers = map[string]*fyne.Container{"header2": header2Container}
+
 	container00 := container.New(
 		layout.NewVBoxLayout(),
 		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), buildLogo(), layout.NewSpacer()),
 		layout.NewSpacer(),
 		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), buildHeader(), layout.NewSpacer()),
-		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), buildHeader2(), layout.NewSpacer()),
+		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), header2Container, layout.NewSpacer()),
 		layout.NewSpacer(),
 		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), containerButton, layout.NewSpacer()),
 		containerProgressBar,
@@ -221,9 +221,15 @@ func buildHeader() *fyne.Container {
 }
 
 func buildHeader2() *fyne.Container {
-	//username := MyApp.Settings.Username.
-	headline2 := canvas.NewText("Hello Anonym, lets upload some files!", color.White)
-	return container.New(layout.NewCenterLayout(), headline2)
+	usern := MyApp.App.Preferences().String(SettingUsername)
+	if usern != "" {
+		_ = MyApp.Settings.Username.Set(usern)
+	}
+
+	textStart := canvas.NewText("Hello", color.White)
+	textEnd := canvas.NewText(", lets upload some files!", color.White)
+	usernameBinding := widget.NewLabelWithData(MyApp.Settings.Username)
+	return container.New(layout.NewHBoxLayout(), textStart, usernameBinding, textEnd)
 }
 
 func buildCopyright() *fyne.Container {
@@ -236,64 +242,13 @@ func buildCopyright() *fyne.Container {
 	return containerEnd
 }
 
+// History Container
 func buildUploadHistoryContainer() *fyne.Container {
-	// History Container
-	data := []string{"12.12.2022 | http://pixeldrain.com/kajsdjaksjd", "12.12.2022 | http://pixeldrain.com/kajsdjaksjd", "12.12.2022 | http://pixeldrain.com/kajsdjaksjd"}
-	list := widget.NewList(
-		func() int {
-			return len(data)
-		},
-		func() fyne.CanvasObject {
-			return widget.NewLabel("template")
-		},
-		func(i widget.ListItemID, o fyne.CanvasObject) {
-			o.(*widget.Label).SetText(data[i])
-		})
-	// History Container
-	//data := [][]string{
-	//	[]string{"#", "Date", "Link"},
-	//	[]string{"12.03.2022", "ahsakshdhakshd", "http://pixeldrain.com/kajsdjaksjd"},
-	//	//[]string{"12.03.2022", "ahsakshdhakshd", "http://pixeldrain.com/kajsdjaksjd"},
-	//}
-	//historyList := widget.NewTable(
-	//	func() (int, int) {
-	//		return len(data), len(data[0])
-	//	},
-	//	func() fyne.CanvasObject {
-	//		c := container.NewCenter()
-	//		return c
-	//		//w := widget.NewLabel("Template")
-	//		//return w
-	//	},
-	//	func(i widget.TableCellID, o fyne.CanvasObject) {
-	//		if i.Col == 0 && i.Row > 0 {
-	//			w := widget.NewButton("#", func() {
-	//				fmt.Println("click")
-	//			})
-	//			o.(*fyne.Container).Add(w)
-	//			o.(*fyne.Container).Resize(fyne.NewSize(100, 100))
-	//			return
-	//		}
-	//
-	//		w := widget.NewLabel(data[i.Row][i.Col])
-	//		o.(*fyne.Container).Add(w)
-	//		//o.(*fyne.Container).Resize(fyne.NewSize(100, 100))
-	//
-	//		//o.(*widget.Label).SetText(data[i.Row][i.Col])
-	//	})
-	//historyList.SetColumnWidth(0, 250)
-	//historyList.SetColumnWidth(1, 350)
-
-	testButton := widget.NewButtonWithIcon("Show History", theme.InfoIcon(), func() {
-		window := MyApp.App.NewWindow("History")
-		//content := container.New(layout.NewCenterLayout(), list)
-		window.SetContent(list)
-		//window.Resize(fyne.NewSize(480, 380))
-		window.Resize(fyne.NewSize(600, 380))
-		window.Show()
+	historyButton := widget.NewButtonWithIcon("Show History", theme.InfoIcon(), func() {
+		BuildHistoryWindow()
 	})
 
-	return container.New(layout.NewCenterLayout(), testButton)
+	return container.New(layout.NewCenterLayout(), historyButton)
 }
 
 func upload(urc fyne.URIReadCloser, key string) (string, error) {

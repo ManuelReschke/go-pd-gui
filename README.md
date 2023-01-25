@@ -1,10 +1,13 @@
 # Go-PD-GUI -DRAINY
 A free easy to use cross plattform upload tool for pixeldrain.com.
+* Windows x32/x64
+* Linux x64
+* Android APK ARM / ARM64
 
 ![Go-PD-GUI-DRAINY](assets/go-pd-gui-icon.png)
 
 ## Preview
-![Go-PD](assets/go-pd-gui-example-upload.gif)
+![Go-PD](assets/go-pd-gui-preview.gif)
 
 ## Download binaries
 Binaries for Windows, Linux and Android are available under the /fyne-cross folder.

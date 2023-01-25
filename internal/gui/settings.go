@@ -2,6 +2,9 @@ package gui
 
 import (
 	"encoding/json"
+	"image/color"
+	"strings"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
@@ -9,11 +12,11 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/ManuelReschke/go-pd/pkg/pd"
-	"image/color"
-	"strings"
 )
 
 const (
+	FormLabel               = "API KEY:"
+	FormLabelInput          = "*optional"
 	SettingAPIKey           = "setting.apikey"
 	SettingUserInfoJSON     = "setting.user.info.json"
 	SettingUsername         = "setting.user.name"
@@ -28,7 +31,7 @@ func BuildSettingsWindow() {
 
 	inputAPIKey := widget.NewEntry()
 	inputAPIKey.SetPlaceHolder(FormLabelInput)
-	//MyApp.Settings.APIKey = binding.NewString()
+	// MyApp.Settings.APIKey = binding.NewString()
 	_ = MyApp.Settings.APIKey.Set(MyApp.App.Preferences().StringWithFallback(SettingAPIKey, ""))
 	inputAPIKey.Bind(MyApp.Settings.APIKey)
 
@@ -78,8 +81,8 @@ func BuildSettingsWindow() {
 		MyApp.App.Preferences().SetString(SettingUserSubscription, userData.Subscription.Name)
 		_ = MyApp.Settings.Username.Set(userData.Username)
 		_ = MyApp.Settings.Subscription.Set(userData.Subscription.Name)
-
 		MyApp.App.Preferences().SetString(SettingAPIKey, strings.TrimSpace(key)) // store user input
+
 		w.Hide()
 	})
 	containerButton := container.New(layout.NewCenterLayout(), saveButton)
