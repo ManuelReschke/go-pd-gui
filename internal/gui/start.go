@@ -17,10 +17,11 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/ManuelReschke/go-pd/pkg/pd"
+	req2 "github.com/imroc/req/v3"
 )
 
 const (
-	Version      = "v1.1.0"
+	Version      = "v1.2.0"
 	AppID        = "com.gopdgui.app"
 	WindowTitle  = "Go-PD-GUI - DRAINY - PixelDrain Upload Tool"
 	WindowWidth  = 550
@@ -105,7 +106,7 @@ func BuildStart() {
 	resultContainer.Hide()
 
 	// PROGRESSBAR
-	progressBar := widget.NewProgressBarInfinite()
+	progressBar := widget.NewProgressBar()
 	containerProgressBar := container.New(layout.NewVBoxLayout(), layout.NewSpacer(), progressBar, layout.NewSpacer())
 	containerProgressBar.Hide() // hide per default
 
@@ -141,7 +142,7 @@ func BuildStart() {
 						return
 					}
 
-					pixelDrainURL, err := upload(r, key)
+					pixelDrainURL, err := upload(r, key, progressBar)
 					if err != nil {
 						containerProgressBar.Hide()
 						dialog.ShowError(err, MyApp.Window)
@@ -251,16 +252,17 @@ func buildUploadHistoryContainer() *fyne.Container {
 	return container.New(layout.NewCenterLayout(), historyButton)
 }
 
-func upload(urc fyne.URIReadCloser, key string) (string, error) {
+func upload(urc fyne.URIReadCloser, key string, progressBar *widget.ProgressBar) (string, error) {
 	fileName := urc.URI().Name()
 	if fileName == "" {
 		return "", errors.New("filename can not be empty")
 	}
 
 	req := &pd.RequestUpload{
-		File:      urc,
-		FileName:  fileName,
-		Anonymous: true,
+		File:       urc,
+		PathToFile: urc.URI().Path(),
+		FileName:   fileName,
+		Anonymous:  true,
 	}
 	if key != "" {
 		req.Anonymous = false
@@ -268,6 +270,9 @@ func upload(urc fyne.URIReadCloser, key string) (string, error) {
 	}
 
 	c := pd.New(nil, nil)
+	c.SetUploadCallback(func(info req2.UploadInfo) {
+		progressBar.SetValue(float64(info.UploadedSize) / float64(info.FileSize))
+	})
 	rsp, err := c.UploadPOST(req)
 	if err != nil {
 		return "", err
