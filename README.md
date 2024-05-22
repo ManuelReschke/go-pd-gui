@@ -9,6 +9,9 @@ A free easy to use cross plattform upload tool for pixeldrain.com.
 ## Preview
 ![Go-PD](assets/go-pd-gui-preview.gif)
 
+Progress bar
+![Go-PD-Progress](assets/go-pd-gui-progress-bar.gif)
+
 ## Download binaries
 Binaries for Windows, Linux and Android are available under the /fyne-cross folder.
 
@@ -28,10 +31,11 @@ Binaries for Windows, Linux and Android are available under the /fyne-cross fold
   * save and load API-Key from user settings
 * output file url
 * "Copy" button to copy link easily
+* real progress bar (1 .. 100)
 
 ### ToDos:
 
-* [ ] implement real progress bar (1 .. 100)
+* [x] ~~implement real progress bar (1 .. 100)~~
 
 ## License
 
