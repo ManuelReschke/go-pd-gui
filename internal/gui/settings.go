@@ -16,6 +16,7 @@ const (
 	FormLabel               = "API KEY:"
 	FormLabelInput          = "*optional"
 	FormLabelTheme          = "Theme:"
+	FormLabelFilePicker     = "Filepicker:"
 	ThemeOptionDark         = "Dark"
 	ThemeOptionLight        = "Light"
 	SettingAPIKey           = "setting.apikey"
@@ -71,13 +72,30 @@ func BuildSettingsWindow() {
 		themeSelect.SetSelected(ThemeOptionDark)
 	}
 
+	// File picker: Fyne single-file vs OS native multi-select
+	formLabelFilePicker := widget.NewLabel(FormLabelFilePicker)
+	filePickerSelect := widget.NewRadioGroup(
+		[]string{FilePickerOptionFyne, FilePickerOptionNative},
+		func(selected string) {
+			if selected == "" {
+				return
+			}
+			setFilePickerMode(filePickerModeFromLabel(selected))
+		},
+	)
+	// Vertical so long labels stay readable in the form layout.
+	filePickerSelect.Horizontal = false
+	filePickerSelect.Required = true
+	filePickerSelect.SetSelected(filePickerLabelFromMode(currentFilePickerMode()))
+
 	containerForm := container.New(
 		layout.NewFormLayout(),
 		formLabelAPIKey, inputAPIKey,
 		formLabelTheme, themeSelect,
+		formLabelFilePicker, filePickerSelect,
 		layout.NewSpacer(), vertBox,
 	)
-	containerForm.Resize(fyne.NewSize(0, 200))
+	containerForm.Resize(fyne.NewSize(0, 260))
 
 	saveButton := widget.NewButtonWithIcon("Save", theme.ConfirmIcon(), func() {
 		key, _ := MyApp.Settings.APIKey.Get()
@@ -114,7 +132,7 @@ func BuildSettingsWindow() {
 	content := container.New(layout.NewVBoxLayout(), containerForm, layout.NewSpacer(), containerButton)
 
 	w.SetContent(content)
-	w.Resize(fyne.NewSize(480, 380))
+	w.Resize(fyne.NewSize(520, 420))
 	w.Show()
 }
 

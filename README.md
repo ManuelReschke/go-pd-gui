@@ -27,30 +27,26 @@ Pre-built packages are published on the [GitHub Releases](https://github.com/Man
   * [Android ARM64](https://github.com/ManuelReschke/go-pd-gui/releases/latest/download/DRAINY_Android_arm64.apk)
   * [Android ARM](https://github.com/ManuelReschke/go-pd-gui/releases/latest/download/DRAINY_Android_arm.apk)
 
-### Cutting a release
+## Features
 
-```bash
-# 1. Bump version in FyneApp.toml (and CHANGELOG.md)
-# 2. Commit, then tag and push:
-git tag v1.4.0
-git push origin v1.4.0
-```
+### Highlights (new)
 
-GitHub Actions builds all platforms with **fyne-cross** and publishes the assets via **GoReleaser**.
+* **Multi-file upload** — select several files, stage them in a queue (add / remove), then upload them all in one go
+* **OS native multi-select** — on Linux and Windows, pick many files at once in the system file dialog (Ctrl/Shift); sequential upload with overall progress
+* **Filepicker setting** — switch in Settings between **Fyne default** (single file) and **OS Native Multipicker**
+* **Dark / Light mode** — theme switch in Settings (persisted)
+* **Copy all URLs** — after a multi-upload, Copy puts every PixelDrain link on its own line
+* **Android SAF uploads** — content URIs from the Storage Access Framework are prepared correctly before upload
 
-### Features:
+### Core
 
-* upload to pixeldrain (with infinite progress bar)
-* support auth via API-Key (*optional)
-  * save and load API-Key from user settings
-* Dark / Light mode switch in Settings
-* output file url
-* "Copy" button to copy link easily
-* real progress bar (1 .. 100)
-
-### ToDos:
-
-* [x] ~~implement real progress bar (1 .. 100)~~
+* Upload to [pixeldrain.com](https://pixeldrain.com)
+* Optional API-Key authentication (saved in user settings)
+* Real progress bar (0–100%) during transfer
+* Result hyperlink + **Copy** button
+* Last uploaded file on the main screen
+* Remote upload history (with API key)
+* Cross-platform builds: Windows x32/x64, Linux x64, Android ARM / ARM64
 
 ## Changelog
 
