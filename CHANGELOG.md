@@ -17,6 +17,10 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 - Download links in the README now point to GitHub Release assets instead of committed `fyne-cross/` binaries.
 - UI labels that used hardcoded white canvas text now use theme-aware widgets so Light mode stays readable.
 
+### Fixed
+
+- **Android uploads** no longer fail with `open /document/primary%3A…: no such file or directory` when picking photos via the Storage Access Framework. Content URIs are streamed into a temp file before `go-pd` upload. (#5)
+
 ## [1.3.0] - 2026-07-31
 
 ### Changed

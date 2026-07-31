@@ -17,6 +17,7 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/ManuelReschke/go-pd-gui/internal/fileprep"
 	"github.com/ManuelReschke/go-pd/pkg/pd"
 	req2 "github.com/imroc/req/v3"
 )
@@ -134,25 +135,6 @@ func BuildStart() {
 				return // user cancelled
 			}
 
-			// Capture path before closing. go-pd's UploadPOST uploads via PathToFile
-			// (SetFile), not the io.Reader — see go-pd pd.UploadPOST.
-			fileURI := reader.URI()
-			filePath := filepath.Clean(fileURI.Path())
-			fileName := fileURI.Name()
-			_ = reader.Close()
-
-			if filePath == "" || filePath == "." {
-				dialog.ShowError(fmt.Errorf("could not resolve local path for %q", fileURI.String()), MyApp.Window)
-				return
-			}
-			if st, statErr := os.Stat(filePath); statErr != nil {
-				dialog.ShowError(fmt.Errorf("cannot access %s: %w", filePath, statErr), MyApp.Window)
-				return
-			} else if st.IsDir() {
-				dialog.ShowError(fmt.Errorf("selected path is a directory: %s", filePath), MyApp.Window)
-				return
-			}
-
 			key, _ := MyApp.Settings.APIKey.Get()
 			if key == "" {
 				// Binding may be empty until Settings is opened; fall back to prefs.
@@ -163,11 +145,23 @@ func BuildStart() {
 			containerProgressBar.Show()
 			uploadButton.Disable()
 
+			// Materialize + upload off the UI thread. On Android, SAF content URIs are
+			// not real filesystem paths; materializeForUpload copies them to a temp file
+			// so go-pd can use PathToFile / SetFile.
 			go func() {
 				defer fyne.Do(func() {
 					uploadButton.Enable()
 					containerProgressBar.Hide()
 				})
+
+				filePath, fileName, cleanup, matErr := materializeForUpload(reader)
+				if matErr != nil {
+					fyne.Do(func() {
+						dialog.ShowError(fmt.Errorf("cannot prepare file for upload: %w", matErr), MyApp.Window)
+					})
+					return
+				}
+				defer cleanup()
 
 				pixelDrainURL, err := upload(filePath, fileName, key, progressBar)
 				if err != nil {
@@ -279,6 +273,42 @@ func buildUploadHistoryContainer() *fyne.Container {
 	})
 
 	return container.New(layout.NewCenterLayout(), historyButton)
+}
+
+// materializeForUpload returns a real local filesystem path for go-pd's
+// PathToFile / SetFile upload path.
+//
+// Desktop file:// URIs already map to readable paths. On Android (and other SAF
+// providers) the dialog yields content://document URIs such as
+// /document/primary%3APictures%2Fphoto.png which cannot be opened with os.Open.
+// In that case the URI reader is copied into a temporary file that the caller
+// must remove via the returned cleanup function.
+//
+// The reader is always closed by this function.
+func materializeForUpload(reader fyne.URIReadCloser) (localPath, fileName string, cleanup func(), err error) {
+	cleanup = func() {}
+	if reader == nil {
+		return "", "", cleanup, errors.New("file reader is nil")
+	}
+	defer func() {
+		// Ensure the picker stream is closed even if we already consumed it.
+		_ = reader.Close()
+	}()
+
+	fileURI := reader.URI()
+	fileName = fileprep.SanitizeFileName(fileURI.Name())
+
+	if path, ok := fileprep.ReadableLocalFile(fileURI.Path()); ok {
+		return path, fileName, cleanup, nil
+	}
+
+	// Android SAF / content URIs: stream into a temp file for go-pd SetFile.
+	tmpPath, copyErr := fileprep.CopyReaderToTempFile(reader, fileName)
+	if copyErr != nil {
+		return "", "", cleanup, fmt.Errorf("copy from %q: %w", fileURI.String(), copyErr)
+	}
+	cleanup = func() { _ = os.Remove(tmpPath) }
+	return tmpPath, fileName, cleanup, nil
 }
 
 // upload sends a local file to PixelDrain.
