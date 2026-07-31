@@ -5,7 +5,7 @@ Icon = "Icon.png"
 Name = "DRAINY"
 ID = "com.gopdgui.app"
 Version = "1.3.0"
-Build = 111
+Build = 126
 
 [Migrations]
 fyneDo = true
