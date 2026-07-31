@@ -5,6 +5,16 @@ All notable changes to **Go-PD-GUI (DRAINY)** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Automated GitHub Releases on version tags (`v*`) via fyne-cross + GoReleaser.
+
+### Changed
+
+- Download links in the README now point to GitHub Release assets instead of committed `fyne-cross/` binaries.
+
 ## [1.3.0] - 2026-07-31
 
 ### Changed

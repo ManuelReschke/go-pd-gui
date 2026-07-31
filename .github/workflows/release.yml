@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install fyne-cross
+        run: go install github.com/fyne-io/fyne-cross@latest
+
+      - name: Build with fyne-cross
+        run: |
+          set -euo pipefail
+          fyne-cross windows -arch=amd64,386
+          fyne-cross linux -arch=amd64
+          fyne-cross android -arch=arm,arm64
+
+      - name: Stage release assets
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          cp fyne-cross/dist/windows-amd64/DRAINY.exe.zip release-assets/DRAINY_Windows_x64.zip
+          cp fyne-cross/dist/windows-386/DRAINY.exe.zip   release-assets/DRAINY_Windows_x86.zip
+          cp fyne-cross/dist/linux-amd64/DRAINY.tar.xz    release-assets/DRAINY_Linux_x64.tar.xz
+          cp fyne-cross/dist/android-arm64/DRAINY.apk     release-assets/DRAINY_Android_arm64.apk
+          cp fyne-cross/dist/android-arm/DRAINY.apk       release-assets/DRAINY_Android_arm.apk
+          echo "Staged assets:"
+          ls -lah release-assets/
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

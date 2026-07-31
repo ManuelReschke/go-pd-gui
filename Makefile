@@ -11,9 +11,18 @@ setup:
 .PHONY: setup
 
 build:
-	#env GOOS=linux GOARCH=amd64 go build -o bin/linux/go-pd-gui
-	#env GOOS=windows GOARCH=amd64 CGO_ENABLED=1 go build -o bin/windows/go-pd-gui.exe
 	fyne-cross windows -arch=amd64,386
-	fyne-cross linux
+	fyne-cross linux -arch=amd64
 	fyne-cross android -arch=arm,arm64
 .PHONY: build
+
+# Stage the same asset names as CI (for local inspection / dry-runs)
+stage-release-assets: build
+	mkdir -p release-assets
+	cp fyne-cross/dist/windows-amd64/DRAINY.exe.zip release-assets/DRAINY_Windows_x64.zip
+	cp fyne-cross/dist/windows-386/DRAINY.exe.zip   release-assets/DRAINY_Windows_x86.zip
+	cp fyne-cross/dist/linux-amd64/DRAINY.tar.xz    release-assets/DRAINY_Linux_x64.tar.xz
+	cp fyne-cross/dist/android-arm64/DRAINY.apk     release-assets/DRAINY_Android_arm64.apk
+	cp fyne-cross/dist/android-arm/DRAINY.apk       release-assets/DRAINY_Android_arm.apk
+	@ls -lah release-assets/
+.PHONY: stage-release-assets

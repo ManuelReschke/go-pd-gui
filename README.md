@@ -15,16 +15,28 @@ Progress bar
 ![Go-PD-Progress](assets/go-pd-gui-progress-bar.gif)
 
 ## Download binaries
-Binaries for Windows, Linux and Android are available under the /fyne-cross folder.
+
+Pre-built packages are published on the [GitHub Releases](https://github.com/ManuelReschke/go-pd-gui/releases) page (latest: [v1.3.0](https://github.com/ManuelReschke/go-pd-gui/releases/tag/v1.3.0)).
 
 * Windows:
-  * [Windows 64 Bit](https://github.com/ManuelReschke/go-pd-gui/blob/main/fyne-cross/bin/windows-amd64/DRAINY.exe?raw=true)
-  * [Windows 32 Bit](https://github.com/ManuelReschke/go-pd-gui/tree/main/fyne-cross/bin/windows-386/DRAINY.exe?raw=true)
+  * [Windows 64 Bit](https://github.com/ManuelReschke/go-pd-gui/releases/latest/download/DRAINY_Windows_x64.zip)
+  * [Windows 32 Bit](https://github.com/ManuelReschke/go-pd-gui/releases/latest/download/DRAINY_Windows_x86.zip)
 * Linux:
-  * [Linux 64 Bit](https://github.com/ManuelReschke/go-pd-gui/blob/main/fyne-cross/bin/linux-amd64/DRAINY?raw=true)
+  * [Linux 64 Bit](https://github.com/ManuelReschke/go-pd-gui/releases/latest/download/DRAINY_Linux_x64.tar.xz)
 * Android:
-  * [Android-ARM64](https://github.com/ManuelReschke/go-pd-gui/blob/main/fyne-cross/dist/android-arm64/DRAINY.apk?raw=true)
-  * [Android-ARM](https://github.com/ManuelReschke/go-pd-gui/blob/main/fyne-cross/dist/android-arm/DRAINY.apk?raw=true)
+  * [Android ARM64](https://github.com/ManuelReschke/go-pd-gui/releases/latest/download/DRAINY_Android_arm64.apk)
+  * [Android ARM](https://github.com/ManuelReschke/go-pd-gui/releases/latest/download/DRAINY_Android_arm.apk)
+
+### Cutting a release
+
+```bash
+# 1. Bump version in FyneApp.toml (and CHANGELOG.md)
+# 2. Commit, then tag and push:
+git tag v1.4.0
+git push origin v1.4.0
+```
+
+GitHub Actions builds all platforms with **fyne-cross** and publishes the assets via **GoReleaser**.
 
 ### Features:
 

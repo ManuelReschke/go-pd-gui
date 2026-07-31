@@ -1,0 +1,33 @@
+# GoReleaser config for DRAINY.
+# Binaries/packages are built by fyne-cross in CI; this file only publishes them.
+version: 2
+
+project_name: DRAINY
+
+builds:
+  - skip: true
+
+release:
+  name_template: "DRAINY {{.Tag}}"
+  draft: false
+  prerelease: auto
+  extra_files:
+    - glob: ./release-assets/*
+
+checksum:
+  name_template: checksums.txt
+  extra_files:
+    - glob: ./release-assets/*
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^doc:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+      - Merge pull request
+      - Merge branch
