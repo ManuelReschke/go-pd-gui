@@ -41,7 +41,7 @@ GitHub Actions builds all platforms with **fyne-cross** and publishes the assets
 ### Features:
 
 * upload to pixeldrain (with infinite progress bar)
-* **multi-file upload** — add several files to a queue, then upload them all (sequential, overall progress)
+* **multi-file upload** — pick several files at once (native multi-select on Linux/Windows), stage them in a queue, then upload all (sequential, overall progress)
 * support auth via API-Key (*optional)
   * save and load API-Key from user settings
 * Dark / Light mode switch in Settings

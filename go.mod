@@ -6,6 +6,8 @@ require (
 	fyne.io/fyne/v2 v2.8.0
 	github.com/ManuelReschke/go-pd v1.6.0
 	github.com/imroc/req/v3 v3.60.0
+	github.com/rymdport/portal v0.4.2
+	golang.org/x/sys v0.47.0
 )
 
 require (
@@ -42,7 +44,6 @@ require (
 	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/quic-go/quic-go v0.61.0 // indirect
 	github.com/refraction-networking/utls v1.8.2 // indirect
-	github.com/rymdport/portal v0.4.2 // indirect
 	github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c // indirect
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
@@ -50,7 +51,6 @@ require (
 	golang.org/x/crypto v0.54.0 // indirect
 	golang.org/x/image v0.24.0 // indirect
 	golang.org/x/net v0.57.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.40.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

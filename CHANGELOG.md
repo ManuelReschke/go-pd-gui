@@ -12,6 +12,7 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 - Automated GitHub Releases on version tags (`v*`) via fyne-cross + GoReleaser.
 - **Dark / Light mode switch** in Settings (persisted via app preferences; default remains dark). (#4)
 - **Multi-file upload**: stage multiple files (Add files), review/remove them in a queue, then upload sequentially with overall progress. Copy pastes all result URLs (one per line). (#3)
+- **Native multi-select** when adding files on Linux (XDG portal / kdialog / zenity) and Windows (common dialog). Android keeps the single-file Fyne picker.
 
 ### Changed
 

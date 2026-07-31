@@ -18,6 +18,7 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/ManuelReschke/go-pd-gui/internal/filepick"
 	"github.com/ManuelReschke/go-pd-gui/internal/fileprep"
 	"github.com/ManuelReschke/go-pd-gui/internal/uploadutil"
 	"github.com/ManuelReschke/go-pd/pkg/pd"
@@ -194,7 +195,20 @@ func BuildStart() {
 		}
 	}
 
-	openFilePicker := func() {
+	appendPending := func(filePath, fileName string, cleanup func()) {
+		if cleanup == nil {
+			cleanup = func() {}
+		}
+		pending = append(pending, pendingFile{
+			localPath: filePath,
+			fileName:  fileName,
+			cleanup:   cleanup,
+		})
+		refreshQueue()
+	}
+
+	// Fyne single-file picker (Android and any platform without a native multi-picker).
+	openFyneSingleFilePicker := func() {
 		fileOpen := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
 			if err != nil {
 				dialog.ShowError(err, MyApp.Window)
@@ -215,12 +229,7 @@ func BuildStart() {
 				}
 
 				fyne.Do(func() {
-					pending = append(pending, pendingFile{
-						localPath: filePath,
-						fileName:  fileName,
-						cleanup:   cleanup,
-					})
-					refreshQueue()
+					appendPending(filePath, fileName, cleanup)
 				})
 			}()
 		}, MyApp.Window)
@@ -228,6 +237,58 @@ func BuildStart() {
 		// Show creates the dialog; Resize afterward applies the preferred size.
 		fileOpen.Show()
 		fileOpen.Resize(fyne.NewSize(600, 600))
+	}
+
+	// Prefer native multi-select (Ctrl/Shift+click or rubber-band) on desktop.
+	// Falls back to Fyne single-file open when unsupported (e.g. Android).
+	openFilePicker := func() {
+		go func() {
+			paths, err := filepick.OpenMultiple("Select files to upload")
+			if errors.Is(err, filepick.ErrUnsupported) {
+				fyne.Do(openFyneSingleFilePicker)
+				return
+			}
+			if err != nil {
+				fyne.Do(func() {
+					dialog.ShowError(fmt.Errorf("file picker failed: %w", err), MyApp.Window)
+				})
+				return
+			}
+			if len(paths) == 0 {
+				return // cancelled
+			}
+
+			// Validate paths and stage them on the UI thread.
+			type staged struct {
+				path, name string
+			}
+			var okFiles []staged
+			var failMsgs []string
+			for _, p := range paths {
+				local, readable := fileprep.ReadableLocalFile(p)
+				if !readable {
+					failMsgs = append(failMsgs, fmt.Sprintf("%s: not a readable file", filepath.Base(p)))
+					continue
+				}
+				okFiles = append(okFiles, staged{
+					path: local,
+					name: fileprep.SanitizeFileName(filepath.Base(local)),
+				})
+			}
+
+			fyne.Do(func() {
+				for _, f := range okFiles {
+					appendPending(f.path, f.name, nil)
+				}
+				if len(failMsgs) > 0 {
+					dialog.ShowError(
+						fmt.Errorf("%d of %d path(s) could not be added:\n%s",
+							len(failMsgs), len(paths), strings.Join(failMsgs, "\n")),
+						MyApp.Window,
+					)
+				}
+			})
+		}()
 	}
 
 	addFilesButton = widget.NewButtonWithIcon(ButtonAddFiles, theme.ContentAddIcon(), func() {
