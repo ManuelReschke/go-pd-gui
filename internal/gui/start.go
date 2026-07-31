@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -18,6 +19,7 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/ManuelReschke/go-pd-gui/internal/fileprep"
+	"github.com/ManuelReschke/go-pd-gui/internal/uploadutil"
 	"github.com/ManuelReschke/go-pd/pkg/pd"
 	req2 "github.com/imroc/req/v3"
 )
@@ -27,14 +29,23 @@ const (
 	AppID        = "com.gopdgui.app"
 	WindowTitle  = "Go-PD-GUI - DRAINY - PixelDrain Upload Tool"
 	WindowWidth  = 550
-	WindowHeight = 600
+	WindowHeight = 650
 
-	Headline     = "PixelDrain.com Upload Tool"
-	ButtonCopy   = "Copy"
-	ButtonUpload = "Upload"
-	EmptyString  = ""
-	FooterText   = "This tool was made by Manuel Reschke under MIT Licence. "
+	Headline        = "PixelDrain.com Upload Tool"
+	ButtonCopy      = "Copy"
+	ButtonUpload    = "Upload"
+	ButtonAddFiles  = "Add files"
+	ButtonUploadAll = "Upload all"
+	EmptyString     = ""
+	FooterText      = "This tool was made by Manuel Reschke under MIT Licence. "
 )
+
+// pendingFile is a local file ready for PixelDrain upload (path may be a temp copy).
+type pendingFile struct {
+	localPath string
+	fileName  string
+	cleanup   func()
+}
 
 type Settings struct {
 	APIKey       binding.String
@@ -120,12 +131,67 @@ func BuildStart() {
 	lastElementContainer := container.New(layout.NewHBoxLayout())
 	lastElementContainer.Hide()
 
-	// UPLOAD BUTTON ACTION
-	// Upload must run off the UI thread: the file dialog only closes after this
-	// callback returns. Blocking here freezes the picker until the transfer ends.
-	// Declare first so the callback can call Disable/Enable (:= scope starts after the statement).
-	var uploadButton *widget.Button
-	uploadButton = widget.NewButtonWithIcon(ButtonUpload, theme.UploadIcon(), func() {
+	// MULTI-FILE QUEUE
+	// Fyne's FileOpen dialog only returns one file per pick, so we accumulate
+	// selections in a queue and upload them sequentially on "Upload all".
+	var pending []pendingFile
+	queueStatus := widget.NewLabel("")
+	queueStatus.Hide()
+	queueBox := container.NewVBox()
+	queueScroll := container.NewVScroll(queueBox)
+	queueScroll.SetMinSize(fyne.NewSize(0, 100))
+	queueContainer := container.NewVBox(queueStatus, queueScroll)
+	queueContainer.Hide()
+
+	// Upload status (e.g. "Uploading 2/5: photo.png")
+	uploadStatus := widget.NewLabel("")
+	uploadStatus.Alignment = fyne.TextAlignCenter
+	uploadStatus.Hide()
+
+	var addFilesButton, uploadAllButton *widget.Button
+
+	refreshQueue := func() {
+		queueBox.Objects = nil
+		for i := range pending {
+			idx := i
+			f := pending[idx]
+			nameLabel := widget.NewLabel(f.fileName)
+			nameLabel.Truncation = fyne.TextTruncateEllipsis
+			removeBtn := widget.NewButtonWithIcon("", theme.DeleteIcon(), func() {
+				if idx < 0 || idx >= len(pending) {
+					return
+				}
+				if pending[idx].cleanup != nil {
+					pending[idx].cleanup()
+				}
+				pending = append(pending[:idx], pending[idx+1:]...)
+				refreshQueue()
+			})
+			row := container.NewBorder(nil, nil, nil, removeBtn, nameLabel)
+			queueBox.Add(row)
+		}
+		queueBox.Refresh()
+
+		n := len(pending)
+		if n == 0 {
+			queueContainer.Hide()
+			queueStatus.Hide()
+			uploadAllButton.Disable()
+			uploadAllButton.SetText(ButtonUploadAll)
+			return
+		}
+		queueStatus.SetText(fmt.Sprintf("%d file(s) selected", n))
+		queueStatus.Show()
+		queueContainer.Show()
+		uploadAllButton.Enable()
+		if n == 1 {
+			uploadAllButton.SetText(ButtonUpload)
+		} else {
+			uploadAllButton.SetText(fmt.Sprintf("%s (%d)", ButtonUploadAll, n))
+		}
+	}
+
+	openFilePicker := func() {
 		fileOpen := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
 			if err != nil {
 				dialog.ShowError(err, MyApp.Window)
@@ -135,25 +201,8 @@ func BuildStart() {
 				return // user cancelled
 			}
 
-			key, _ := MyApp.Settings.APIKey.Get()
-			if key == "" {
-				// Binding may be empty until Settings is opened; fall back to prefs.
-				key = MyApp.App.Preferences().String(SettingAPIKey)
-			}
-
-			progressBar.SetValue(0)
-			containerProgressBar.Show()
-			uploadButton.Disable()
-
-			// Materialize + upload off the UI thread. On Android, SAF content URIs are
-			// not real filesystem paths; materializeForUpload copies them to a temp file
-			// so go-pd can use PathToFile / SetFile.
+			// Materialize off the UI thread (Android SAF may copy into a temp file).
 			go func() {
-				defer fyne.Do(func() {
-					uploadButton.Enable()
-					containerProgressBar.Hide()
-				})
-
 				filePath, fileName, cleanup, matErr := materializeForUpload(reader)
 				if matErr != nil {
 					fyne.Do(func() {
@@ -161,38 +210,14 @@ func BuildStart() {
 					})
 					return
 				}
-				defer cleanup()
-
-				pixelDrainURL, err := upload(filePath, fileName, key, progressBar)
-				if err != nil {
-					fyne.Do(func() {
-						dialog.ShowError(fmt.Errorf("upload failed: %w", err), MyApp.Window)
-					})
-					return
-				}
 
 				fyne.Do(func() {
-					_ = linkBound.Set(pixelDrainURL)
-					parsedURL, _ := url.Parse(pixelDrainURL)
-					resultWidget.SetText(pixelDrainURL)
-					resultWidget.SetURL(parsedURL)
-					resultContainer.Show()
-
-					lastElement := UploadHistory{
-						UploadDate: time.Now(),
-						FileName:   fileName,
-						URL:        pixelDrainURL,
-					}
-					MyApp.Storage.LastElement = lastElement
-
-					lastElementContainer.Objects = nil
-					lastElementURLParsed, _ := url.Parse(pixelDrainURL)
-					lastElementText := widget.NewLabel("Last upload:")
-					lastElementLink := widget.NewHyperlink(lastElement.FileName, lastElementURLParsed)
-					lastElementContainer.Add(lastElementText)
-					lastElementContainer.Add(lastElementLink)
-					lastElementContainer.Show()
-					lastElementContainer.Refresh()
+					pending = append(pending, pendingFile{
+						localPath: filePath,
+						fileName:  fileName,
+						cleanup:   cleanup,
+					})
+					refreshQueue()
 				})
 			}()
 		}, MyApp.Window)
@@ -200,8 +225,121 @@ func BuildStart() {
 		// Show creates the dialog; Resize afterward applies the preferred size.
 		fileOpen.Show()
 		fileOpen.Resize(fyne.NewSize(600, 600))
+	}
+
+	addFilesButton = widget.NewButtonWithIcon(ButtonAddFiles, theme.ContentAddIcon(), func() {
+		openFilePicker()
 	})
-	containerButton := container.New(layout.NewCenterLayout(), uploadButton)
+
+	// Upload must run off the UI thread so the UI stays responsive and the
+	// progress bar can update via fyne.Do.
+	uploadAllButton = widget.NewButtonWithIcon(ButtonUploadAll, theme.UploadIcon(), func() {
+		if len(pending) == 0 {
+			return
+		}
+
+		key, _ := MyApp.Settings.APIKey.Get()
+		if key == "" {
+			// Binding may be empty until Settings is opened; fall back to prefs.
+			key = MyApp.App.Preferences().String(SettingAPIKey)
+		}
+
+		// Take ownership of the queue so the user can stage new files afterwards.
+		batch := pending
+		pending = nil
+		refreshQueue()
+
+		progressBar.SetValue(0)
+		containerProgressBar.Show()
+		uploadStatus.SetText(fmt.Sprintf("Uploading 0/%d…", len(batch)))
+		uploadStatus.Show()
+		addFilesButton.Disable()
+		uploadAllButton.Disable()
+
+		go func() {
+			defer fyne.Do(func() {
+				addFilesButton.Enable()
+				containerProgressBar.Hide()
+				uploadStatus.Hide()
+				// Re-apply queue button state (pending may still be empty).
+				refreshQueue()
+			})
+
+			var (
+				successes []UploadHistory
+				failMsgs  []string
+			)
+			total := len(batch)
+
+			for i, file := range batch {
+				idx := i
+				fyne.Do(func() {
+					uploadStatus.SetText(fmt.Sprintf("Uploading %d/%d: %s", idx+1, total, file.fileName))
+					// Per-file progress mapped into the overall bar.
+					progressBar.SetValue(float64(idx) / float64(total))
+				})
+
+				// Wrap the shared progress bar so each file contributes 1/total.
+				pixelDrainURL, err := upload(file.localPath, file.fileName, key, progressBar, idx, total)
+				if file.cleanup != nil {
+					file.cleanup()
+				}
+				if err != nil {
+					failMsgs = append(failMsgs, fmt.Sprintf("%s: %v", file.fileName, err))
+					continue
+				}
+
+				item := UploadHistory{
+					UploadDate: time.Now(),
+					FileName:   file.fileName,
+					URL:        pixelDrainURL,
+				}
+				successes = append(successes, item)
+			}
+
+			fyne.Do(func() {
+				progressBar.SetValue(1)
+
+				if len(successes) > 0 {
+					last := successes[len(successes)-1]
+					MyApp.Storage.LastElement = last
+					MyApp.Storage.UploadHistory = append(MyApp.Storage.UploadHistory, successes...)
+
+					// Result link: last URL. Copy uses all URLs when multi (one per line).
+					urls := make([]string, len(successes))
+					for i, s := range successes {
+						urls[i] = s.URL
+					}
+					_ = linkBound.Set(uploadutil.JoinURLs(urls))
+					parsedURL, _ := url.Parse(last.URL)
+					if len(successes) == 1 {
+						resultWidget.SetText(last.URL)
+					} else {
+						resultWidget.SetText(fmt.Sprintf("%d files uploaded (last: %s)", len(successes), last.FileName))
+					}
+					resultWidget.SetURL(parsedURL)
+					resultContainer.Show()
+
+					lastElementContainer.Objects = nil
+					lastElementURLParsed, _ := url.Parse(last.URL)
+					lastElementText := widget.NewLabel("Last upload:")
+					lastElementLink := widget.NewHyperlink(last.FileName, lastElementURLParsed)
+					lastElementContainer.Add(lastElementText)
+					lastElementContainer.Add(lastElementLink)
+					lastElementContainer.Show()
+					lastElementContainer.Refresh()
+				}
+
+				if len(failMsgs) > 0 {
+					msg := fmt.Sprintf("%d of %d upload(s) failed:\n%s", len(failMsgs), total, strings.Join(failMsgs, "\n"))
+					dialog.ShowError(errors.New(msg), MyApp.Window)
+				}
+			})
+		}()
+	})
+	uploadAllButton.Disable()
+
+	containerButton := container.New(layout.NewHBoxLayout(), addFilesButton, uploadAllButton)
 
 	// set the container to the app to update text later with refresh
 	header2Container := buildHeader2()
@@ -215,6 +353,8 @@ func BuildStart() {
 		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), header2Container, layout.NewSpacer()),
 		layout.NewSpacer(),
 		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), containerButton, layout.NewSpacer()),
+		queueContainer,
+		uploadStatus,
 		containerProgressBar,
 		layout.NewSpacer(),
 		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), resultContainer, layout.NewSpacer()),
@@ -315,7 +455,10 @@ func materializeForUpload(reader fyne.URIReadCloser) (localPath, fileName string
 //
 // go-pd UploadPOST always uses PathToFile with req.SetFile (the File reader is
 // not used for the HTTP body). That is required for correct progress FileSize.
-func upload(filePath, fileName, key string, progressBar *widget.ProgressBar) (string, error) {
+//
+// fileIndex and fileTotal map this file's progress into a multi-file overall bar:
+// overall = (fileIndex + fraction) / fileTotal. Pass fileTotal=1 for a single file.
+func upload(filePath, fileName, key string, progressBar *widget.ProgressBar, fileIndex, fileTotal int) (string, error) {
 	if filePath == "" {
 		return "", errors.New("file path can not be empty")
 	}
@@ -324,6 +467,12 @@ func upload(filePath, fileName, key string, progressBar *widget.ProgressBar) (st
 	}
 	if fileName == "" || fileName == "." || fileName == "/" {
 		return "", errors.New("filename can not be empty")
+	}
+	if fileTotal < 1 {
+		fileTotal = 1
+	}
+	if fileIndex < 0 {
+		fileIndex = 0
 	}
 
 	req := &pd.RequestUpload{
@@ -341,8 +490,10 @@ func upload(filePath, fileName, key string, progressBar *widget.ProgressBar) (st
 		if info.FileSize <= 0 {
 			return
 		}
+		fraction := float64(info.UploadedSize) / float64(info.FileSize)
+		overall := uploadutil.MultiFileProgress(fileIndex, fileTotal, fraction)
 		fyne.Do(func() {
-			progressBar.SetValue(float64(info.UploadedSize) / float64(info.FileSize))
+			progressBar.SetValue(overall)
 		})
 	})
 	rsp, err := c.UploadPOST(req)
