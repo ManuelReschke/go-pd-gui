@@ -3,6 +3,7 @@
 package filepick
 
 import (
+	"os"
 	"testing"
 )
 
@@ -31,7 +32,38 @@ func TestSplitLines(t *testing.T) {
 	if len(got) != 3 || got[0] != "a" || got[1] != "b" || got[2] != "c" {
 		t.Fatalf("got %#v", got)
 	}
-	if splitLines(nil) != nil && len(splitLines(nil)) != 0 {
+	if len(splitLines(nil)) != 0 {
 		t.Fatalf("empty input should yield empty")
+	}
+}
+
+func TestChooseBackendKDEPrefersKDialog(t *testing.T) {
+	t.Setenv("XDG_CURRENT_DESKTOP", "KDE")
+	t.Setenv("XDG_SESSION_DESKTOP", "KDE")
+	t.Setenv("DESKTOP_SESSION", "plasma")
+
+	// Only meaningful when kdialog exists (true on this Kubuntu host).
+	if _, err := os.Stat("/usr/bin/kdialog"); err != nil {
+		t.Skip("kdialog not installed")
+	}
+	if got := chooseBackend(); got != backendKDialog {
+		t.Fatalf("on KDE want kdialog, got %v", got)
+	}
+}
+
+func TestChooseBackendNonKDENotForcedKDialog(t *testing.T) {
+	t.Setenv("XDG_CURRENT_DESKTOP", "GNOME")
+	t.Setenv("XDG_SESSION_DESKTOP", "gnome")
+	t.Setenv("DESKTOP_SESSION", "gnome")
+
+	got := chooseBackend()
+	// Must not be "none"; portal or zenity/kdialog as fallback is fine.
+	if got == backendNone {
+		t.Fatalf("expected some backend on GNOME-like env")
+	}
+	// Critical: we only force kdialog on KDE.
+	// On GNOME we prefer portal when available.
+	if portalLikelyAvailable() && got != backendPortal {
+		t.Fatalf("GNOME with portal available: want portal, got %v", got)
 	}
 }
