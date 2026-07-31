@@ -239,9 +239,14 @@ func BuildStart() {
 		fileOpen.Resize(fyne.NewSize(600, 600))
 	}
 
-	// Prefer native multi-select (Ctrl/Shift+click or rubber-band) on desktop.
-	// Falls back to Fyne single-file open when unsupported (e.g. Android).
+	// Open according to Settings → Filepicker (Fyne default | OS Native Multipicker).
+	// Native falls back to Fyne when unsupported (e.g. Android).
 	openFilePicker := func() {
+		if currentFilePickerMode() == FilePickerFyne {
+			openFyneSingleFilePicker()
+			return
+		}
+
 		go func() {
 			paths, err := filepick.OpenMultiple("Select files to upload")
 			if errors.Is(err, filepick.ErrUnsupported) {

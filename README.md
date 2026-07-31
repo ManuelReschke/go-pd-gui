@@ -45,6 +45,7 @@ GitHub Actions builds all platforms with **fyne-cross** and publishes the assets
 * support auth via API-Key (*optional)
   * save and load API-Key from user settings
 * Dark / Light mode switch in Settings
+* Filepicker switch in Settings (Fyne default vs OS native multi-select)
 * output file url (multi-upload: Copy puts every URL on its own line)
 * "Copy" button to copy link easily
 * real progress bar (1 .. 100)
