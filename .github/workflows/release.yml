@@ -26,6 +26,15 @@ jobs:
       - name: Install fyne-cross
         run: go install github.com/fyne-io/fyne-cross@latest
 
+      # Embed the git tag version into packaged app metadata (fyne reads FyneApp.toml).
+      - name: Sync FyneApp.toml Version from tag
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          sed -i "s/^Version = .*/Version = \"${VERSION}\"/" FyneApp.toml
+          echo "FyneApp.toml Version set to ${VERSION}"
+          cat FyneApp.toml
+
       - name: Build with fyne-cross
         run: |
           set -euo pipefail
@@ -44,6 +53,15 @@ jobs:
           cp fyne-cross/dist/android-arm/DRAINY.apk       release-assets/DRAINY_Android_arm.apk
           echo "Staged assets:"
           ls -lah release-assets/
+
+      # fyne package / fyne-cross mutates Details.Build (and we also rewrite Version above).
+      # GoReleaser refuses to release from a dirty worktree: https://goreleaser.com/errors/dirty
+      - name: Restore FyneApp.toml for GoReleaser
+        run: |
+          set -euo pipefail
+          git status --porcelain
+          git restore FyneApp.toml
+          git status --porcelain
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
