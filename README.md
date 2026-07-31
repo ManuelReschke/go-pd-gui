@@ -43,6 +43,7 @@ GitHub Actions builds all platforms with **fyne-cross** and publishes the assets
 * upload to pixeldrain (with infinite progress bar)
 * support auth via API-Key (*optional)
   * save and load API-Key from user settings
+* Dark / Light mode switch in Settings
 * output file url
 * "Copy" button to copy link easily
 * real progress bar (1 .. 100)

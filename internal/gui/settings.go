@@ -2,11 +2,9 @@ package gui
 
 import (
 	"encoding/json"
-	"image/color"
 	"strings"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
@@ -17,6 +15,9 @@ import (
 const (
 	FormLabel               = "API KEY:"
 	FormLabelInput          = "*optional"
+	FormLabelTheme          = "Theme:"
+	ThemeOptionDark         = "Dark"
+	ThemeOptionLight        = "Light"
 	SettingAPIKey           = "setting.apikey"
 	SettingUserInfoJSON     = "setting.user.info.json"
 	SettingUsername         = "setting.user.name"
@@ -27,7 +28,7 @@ func BuildSettingsWindow() {
 	w := MyApp.App.NewWindow("Settings")
 
 	// FORM INPUT API-KEY
-	formLabelAPIKey := canvas.NewText(FormLabel, color.White)
+	formLabelAPIKey := widget.NewLabel(FormLabel)
 
 	inputAPIKey := widget.NewEntry()
 	inputAPIKey.SetPlaceHolder(FormLabelInput)
@@ -43,16 +44,39 @@ func BuildSettingsWindow() {
 	if displayUsername == "" {
 		displayUsername = "Invalid API Key or PixelDrain is not available"
 	}
-	userSettingsContainer := canvas.NewText("User: "+displayUsername, color.White)
+	userSettingsContainer := widget.NewLabel("User: " + displayUsername)
 	displaySubscription := userData.Subscription.Name
 	if displaySubscription != "" {
 		_ = MyApp.Settings.Subscription.Set(displaySubscription)
 	}
 	displaySubscription, _ = MyApp.Settings.Subscription.Get()
-	userSettingsContainer2 := canvas.NewText("Subscription: "+displaySubscription, color.White)
+	userSettingsContainer2 := widget.NewLabel("Subscription: " + displaySubscription)
 	vertBox := container.NewVBox(userSettingsContainer, layout.NewSpacer(), userSettingsContainer2)
 
-	containerForm := container.New(layout.NewFormLayout(), formLabelAPIKey, inputAPIKey, layout.NewSpacer(), vertBox)
+	// Theme switch (Dark / Light)
+	formLabelTheme := widget.NewLabel(FormLabelTheme)
+	themeSelect := widget.NewRadioGroup([]string{ThemeOptionDark, ThemeOptionLight}, func(selected string) {
+		switch selected {
+		case ThemeOptionLight:
+			applyTheme(ThemeLight)
+		case ThemeOptionDark:
+			applyTheme(ThemeDark)
+		}
+	})
+	themeSelect.Horizontal = true
+	themeSelect.Required = true
+	if currentThemeName() == ThemeLight {
+		themeSelect.SetSelected(ThemeOptionLight)
+	} else {
+		themeSelect.SetSelected(ThemeOptionDark)
+	}
+
+	containerForm := container.New(
+		layout.NewFormLayout(),
+		formLabelAPIKey, inputAPIKey,
+		formLabelTheme, themeSelect,
+		layout.NewSpacer(), vertBox,
+	)
 	containerForm.Resize(fyne.NewSize(0, 200))
 
 	saveButton := widget.NewButtonWithIcon("Save", theme.ConfirmIcon(), func() {

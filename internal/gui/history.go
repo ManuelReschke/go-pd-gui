@@ -43,7 +43,7 @@ func BuildHistoryWindow() {
 	client := pd.New(nil, nil)
 	rsp, err := client.GetUserFiles(req)
 	if err != nil || rsp.StatusCode != 200 {
-		text := container.New(layout.NewCenterLayout(), canvas.NewText("error occurred", color.White))
+		text := container.New(layout.NewCenterLayout(), widget.NewLabel("error occurred"))
 		window.SetContent(text)
 		window.Resize(fyne.NewSize(600, 380))
 		window.Show()
@@ -83,9 +83,9 @@ func BuildHistoryWindow() {
 			)
 		})
 
-	line := canvas.NewLine(color.White)
+	line := canvas.NewLine(themeForeground())
 	line.StrokeWidth = 5
-	selectText := canvas.NewText("nothing selected", color.White)
+	selectText := canvas.NewText("nothing selected", themeForeground())
 	centerText := container.NewCenter(selectText)
 	vbox := container.NewVBox(centerText, line)
 
@@ -96,13 +96,13 @@ func BuildHistoryWindow() {
 
 		// show animation for user
 		selectText.Text = fmt.Sprintf("URL copied to the clipboard! File: %s", items[id].Name)
-		selectText.Color = color.RGBA{R: 4, G: 139, B: 0, A: 1}
+		selectText.Color = color.RGBA{R: 4, G: 139, B: 0, A: 255}
 		selectText.Refresh()
 
 		go func() {
 			time.Sleep(3 * time.Second)
 			fyne.Do(func() {
-				selectText.Color = color.White
+				selectText.Color = themeForeground()
 				selectText.Refresh()
 			})
 		}()

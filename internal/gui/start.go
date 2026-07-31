@@ -3,7 +3,6 @@ package gui
 import (
 	"errors"
 	"fmt"
-	"image/color"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -66,7 +65,7 @@ var MyApp AppData
 
 func BuildStart() {
 	MyApp.App = app.NewWithID(AppID)
-	MyApp.App.Settings().SetTheme(theme.DarkTheme())
+	loadAndApplyTheme()
 
 	MyApp.Window = MyApp.App.NewWindow(WindowTitle)
 	MyApp.Window.Resize(fyne.NewSize(WindowWidth, WindowHeight))
@@ -194,7 +193,7 @@ func BuildStart() {
 
 					lastElementContainer.Objects = nil
 					lastElementURLParsed, _ := url.Parse(pixelDrainURL)
-					lastElementText := canvas.NewText("Last upload:", color.White)
+					lastElementText := widget.NewLabel("Last upload:")
 					lastElementLink := widget.NewHyperlink(lastElement.FileName, lastElementURLParsed)
 					lastElementContainer.Add(lastElementText)
 					lastElementContainer.Add(lastElementLink)
@@ -247,7 +246,8 @@ func buildLogo() *fyne.Container {
 }
 
 func buildHeader() *fyne.Container {
-	headline := canvas.NewText(Headline, color.White)
+	headline := widget.NewLabel(Headline)
+	headline.TextStyle = fyne.TextStyle{Bold: true}
 	return container.New(layout.NewCenterLayout(), headline)
 }
 
@@ -257,15 +257,14 @@ func buildHeader2() *fyne.Container {
 		_ = MyApp.Settings.Username.Set(usern)
 	}
 
-	textStart := canvas.NewText("Hello", color.White)
-	textEnd := canvas.NewText(", lets upload some files!", color.White)
+	textStart := widget.NewLabel("Hello")
+	textEnd := widget.NewLabel(", lets upload some files!")
 	usernameBinding := widget.NewLabelWithData(MyApp.Settings.Username)
 	return container.New(layout.NewHBoxLayout(), textStart, usernameBinding, textEnd)
 }
 
 func buildCopyright() *fyne.Container {
-	colorLightSilver := color.RGBA{R: 79, G: 79, B: 79, A: 0}
-	copyright := canvas.NewText(FooterText+Version, colorLightSilver)
+	copyright := canvas.NewText(FooterText+Version, theme.DisabledColor())
 	copyright.TextSize = 11
 	containerEnd := container.New(layout.NewCenterLayout(), copyright)
 	containerEnd.Resize(fyne.NewSize(0, 50))
