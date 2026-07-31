@@ -96,13 +96,15 @@ func BuildHistoryWindow() {
 
 		// show animation for user
 		selectText.Text = fmt.Sprintf("URL copied to the clipboard! File: %s", items[id].Name)
+		selectText.Color = color.RGBA{R: 4, G: 139, B: 0, A: 1}
+		selectText.Refresh()
 
 		go func() {
-			selectText.Color = color.RGBA{R: 4, G: 139, B: 0, A: 1}
-			selectText.Refresh()
 			time.Sleep(3 * time.Second)
-			selectText.Color = color.White
-			selectText.Refresh()
+			fyne.Do(func() {
+				selectText.Color = color.White
+				selectText.Refresh()
+			})
 		}()
 	}
 

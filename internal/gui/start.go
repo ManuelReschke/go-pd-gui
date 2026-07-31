@@ -2,8 +2,11 @@ package gui
 
 import (
 	"errors"
+	"fmt"
 	"image/color"
 	"net/url"
+	"os"
+	"path/filepath"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -13,7 +16,6 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
-	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/ManuelReschke/go-pd/pkg/pd"
@@ -21,7 +23,7 @@ import (
 )
 
 const (
-	Version      = "v1.2.0"
+	Version      = "v1.3.0"
 	AppID        = "com.gopdgui.app"
 	WindowTitle  = "Go-PD-GUI - DRAINY - PixelDrain Upload Tool"
 	WindowWidth  = 550
@@ -73,6 +75,8 @@ func BuildStart() {
 	MyApp.Settings.APIKey = binding.NewString()
 	MyApp.Settings.Username = binding.NewString()
 	MyApp.Settings.Subscription = binding.NewString()
+	// Seed from preferences so upload works without opening Settings first.
+	_ = MyApp.Settings.APIKey.Set(MyApp.App.Preferences().StringWithFallback(SettingAPIKey, ""))
 
 	// Main Menu
 	MyApp.Window.SetMainMenu(BuildMainMenu())
@@ -90,10 +94,12 @@ func BuildStart() {
 			MyApp.Window.Clipboard().SetContent(content)
 			containerCopySuccess.Show()
 			go func() {
-				if containerCopySuccess.Visible() {
-					time.Sleep(3 * time.Second)
-					containerCopySuccess.Hide()
-				}
+				time.Sleep(3 * time.Second)
+				fyne.Do(func() {
+					if containerCopySuccess.Visible() {
+						containerCopySuccess.Hide()
+					}
+				})
 			}()
 		}
 	})
@@ -115,68 +121,92 @@ func BuildStart() {
 	lastElementContainer.Hide()
 
 	// UPLOAD BUTTON ACTION
-	uploadButton := widget.NewButtonWithIcon(ButtonUpload, theme.UploadIcon(), func() {
-		fileOpen := dialog.NewFileOpen(func(closer fyne.URIReadCloser, err error) {
-			if closer != nil {
-				defer closer.Close()
-				containerProgressBar.Show()
+	// Upload must run off the UI thread: the file dialog only closes after this
+	// callback returns. Blocking here freezes the picker until the transfer ends.
+	// Declare first so the callback can call Disable/Enable (:= scope starts after the statement).
+	var uploadButton *widget.Button
+	uploadButton = widget.NewButtonWithIcon(ButtonUpload, theme.UploadIcon(), func() {
+		fileOpen := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
+			if err != nil {
+				dialog.ShowError(err, MyApp.Window)
+				return
+			}
+			if reader == nil {
+				return // user cancelled
+			}
 
-				key, _ := MyApp.Settings.APIKey.Get()
-				// cleanKey := strings.TrimSpace(key)
-				//
-				// // store user input
-				// MyApp.App.Preferences().SetString(SettingAPIKey, cleanKey)
+			// Capture path before closing. go-pd's UploadPOST uploads via PathToFile
+			// (SetFile), not the io.Reader — see go-pd pd.UploadPOST.
+			fileURI := reader.URI()
+			filePath := filepath.Clean(fileURI.Path())
+			fileName := fileURI.Name()
+			_ = reader.Close()
 
-				canRead, err := storage.CanRead(closer.URI())
-				if err != nil {
+			if filePath == "" || filePath == "." {
+				dialog.ShowError(fmt.Errorf("could not resolve local path for %q", fileURI.String()), MyApp.Window)
+				return
+			}
+			if st, statErr := os.Stat(filePath); statErr != nil {
+				dialog.ShowError(fmt.Errorf("cannot access %s: %w", filePath, statErr), MyApp.Window)
+				return
+			} else if st.IsDir() {
+				dialog.ShowError(fmt.Errorf("selected path is a directory: %s", filePath), MyApp.Window)
+				return
+			}
+
+			key, _ := MyApp.Settings.APIKey.Get()
+			if key == "" {
+				// Binding may be empty until Settings is opened; fall back to prefs.
+				key = MyApp.App.Preferences().String(SettingAPIKey)
+			}
+
+			progressBar.SetValue(0)
+			containerProgressBar.Show()
+			uploadButton.Disable()
+
+			go func() {
+				defer fyne.Do(func() {
+					uploadButton.Enable()
 					containerProgressBar.Hide()
-					dialog.ShowError(err, MyApp.Window)
+				})
+
+				pixelDrainURL, err := upload(filePath, fileName, key, progressBar)
+				if err != nil {
+					fyne.Do(func() {
+						dialog.ShowError(fmt.Errorf("upload failed: %w", err), MyApp.Window)
+					})
 					return
 				}
 
-				if canRead {
-					r, err := storage.Reader(closer.URI())
-					if err != nil {
-						containerProgressBar.Hide()
-						dialog.ShowError(err, MyApp.Window)
-						return
-					}
-
-					pixelDrainURL, err := upload(r, key, progressBar)
-					if err != nil {
-						containerProgressBar.Hide()
-						dialog.ShowError(err, MyApp.Window)
-						return
-					}
-
-					_ = linkBound.Set(pixelDrainURL) // set Link
+				fyne.Do(func() {
+					_ = linkBound.Set(pixelDrainURL)
 					parsedURL, _ := url.Parse(pixelDrainURL)
 					resultWidget.SetText(pixelDrainURL)
 					resultWidget.SetURL(parsedURL)
 					resultContainer.Show()
-					containerProgressBar.Hide()
 
-					// save last element in storage
 					lastElement := UploadHistory{
 						UploadDate: time.Now(),
-						FileName:   r.URI().Name(),
+						FileName:   fileName,
 						URL:        pixelDrainURL,
 					}
 					MyApp.Storage.LastElement = lastElement
 
-					// show last element
+					lastElementContainer.Objects = nil
 					lastElementURLParsed, _ := url.Parse(pixelDrainURL)
 					lastElementText := canvas.NewText("Last upload:", color.White)
-					lastElementLink := widget.NewHyperlink(MyApp.Storage.LastElement.FileName, lastElementURLParsed)
+					lastElementLink := widget.NewHyperlink(lastElement.FileName, lastElementURLParsed)
 					lastElementContainer.Add(lastElementText)
 					lastElementContainer.Add(lastElementLink)
 					lastElementContainer.Show()
-				}
-			}
-			return
+					lastElementContainer.Refresh()
+				})
+			}()
 		}, MyApp.Window)
-		fileOpen.Resize(fyne.NewSize(600, 600))
+		// In Fyne v2.8+, Resize before Show panics: MinSize() needs a built dialog.
+		// Show creates the dialog; Resize afterward applies the preferred size.
 		fileOpen.Show()
+		fileOpen.Resize(fyne.NewSize(600, 600))
 	})
 	containerButton := container.New(layout.NewCenterLayout(), uploadButton)
 
@@ -252,15 +282,23 @@ func buildUploadHistoryContainer() *fyne.Container {
 	return container.New(layout.NewCenterLayout(), historyButton)
 }
 
-func upload(urc fyne.URIReadCloser, key string, progressBar *widget.ProgressBar) (string, error) {
-	fileName := urc.URI().Name()
+// upload sends a local file to PixelDrain.
+//
+// go-pd UploadPOST always uses PathToFile with req.SetFile (the File reader is
+// not used for the HTTP body). That is required for correct progress FileSize.
+func upload(filePath, fileName, key string, progressBar *widget.ProgressBar) (string, error) {
+	if filePath == "" {
+		return "", errors.New("file path can not be empty")
+	}
 	if fileName == "" {
+		fileName = filepath.Base(filePath)
+	}
+	if fileName == "" || fileName == "." || fileName == "/" {
 		return "", errors.New("filename can not be empty")
 	}
 
 	req := &pd.RequestUpload{
-		File:       urc,
-		PathToFile: urc.URI().Path(),
+		PathToFile: filePath,
 		FileName:   fileName,
 		Anonymous:  true,
 	}
@@ -271,11 +309,19 @@ func upload(urc fyne.URIReadCloser, key string, progressBar *widget.ProgressBar)
 
 	c := pd.New(nil, nil)
 	c.SetUploadCallback(func(info req2.UploadInfo) {
-		progressBar.SetValue(float64(info.UploadedSize) / float64(info.FileSize))
+		if info.FileSize <= 0 {
+			return
+		}
+		fyne.Do(func() {
+			progressBar.SetValue(float64(info.UploadedSize) / float64(info.FileSize))
+		})
 	})
 	rsp, err := c.UploadPOST(req)
 	if err != nil {
 		return "", err
+	}
+	if rsp == nil {
+		return "", errors.New("empty response from pixeldrain")
 	}
 
 	return rsp.GetFileURL(), nil

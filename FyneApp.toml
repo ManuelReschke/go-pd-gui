@@ -1,8 +1,11 @@
 Website = "https://github.com/ManuelReschke/go-pd-gui"
 
 [Details]
-  Icon = "Icon.png"
-  Name = "DRAINY"
-  ID = "com.gopdgui.app"
-  Version = "1.1.0"
-  Build = 76
+Icon = "Icon.png"
+Name = "DRAINY"
+ID = "com.gopdgui.app"
+Version = "1.3.0"
+Build = 106
+
+[Migrations]
+fyneDo = true

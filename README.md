@@ -6,6 +6,8 @@ A free easy to use cross plattform upload tool for pixeldrain.com.
 
 ![Go-PD-GUI-DRAINY](assets/go-pd-gui-icon.png)
 
+**Current version:** v1.3.0 · [Changelog](CHANGELOG.md)
+
 ## Preview
 ![Go-PD](assets/go-pd-gui-preview.gif)
 
@@ -36,6 +38,10 @@ Binaries for Windows, Linux and Android are available under the /fyne-cross fold
 ### ToDos:
 
 * [x] ~~implement real progress bar (1 .. 100)~~
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for release history and upgrade notes.
 
 ## License
 
