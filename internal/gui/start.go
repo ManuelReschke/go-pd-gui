@@ -150,7 +150,10 @@ func BuildStart() {
 
 	var addFilesButton, uploadAllButton *widget.Button
 
-	refreshQueue := func() {
+	// Declare first so the remove-button callback can call refreshQueue recursively
+	// (:= would leave the name undefined inside the function body).
+	var refreshQueue func()
+	refreshQueue = func() {
 		queueBox.Objects = nil
 		for i := range pending {
 			idx := i
