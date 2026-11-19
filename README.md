@@ -6,7 +6,7 @@ A free easy to use cross plattform upload tool for pixeldrain.com.
 
 ![Go-PD-GUI-DRAINY](assets/go-pd-gui-icon.png)
 
-**Current version:** v1.4.1 · [Changelog](CHANGELOG.md)
+**Current version:** v1.4.2 · [Changelog](CHANGELOG.md)
 
 ## Preview
 ![Go-PD](assets/go-pd-gui-preview.gif)
@@ -16,7 +16,7 @@ Progress bar
 
 ## Download binaries
 
-Pre-built packages are published on the [GitHub Releases](https://github.com/ManuelReschke/go-pd-gui/releases) page (latest: [v1.4.1](https://github.com/ManuelReschke/go-pd-gui/releases/tag/v1.4.1)).
+Pre-built packages are published on the [GitHub Releases](https://github.com/ManuelReschke/go-pd-gui/releases) page (latest: [v1.4.2](https://github.com/ManuelReschke/go-pd-gui/releases/tag/v1.4.2)).
 
 * Windows:
   * [Windows 64 Bit](https://github.com/ManuelReschke/go-pd-gui/releases/latest/download/DRAINY_Windows_x64.zip)

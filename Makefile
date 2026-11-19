@@ -10,9 +10,11 @@ setup:
 	fyne-cross linux --pull
 .PHONY: setup
 
+# Linux packaging pulls fyneio/fyne-cross-images:linux so the Fyne CLI is
+# at least v1.7.3. Older CLIs omit .png from the generated Makefile icon (#9).
 build:
 	fyne-cross windows -arch=amd64,386
-	fyne-cross linux -arch=amd64
+	fyne-cross linux -arch=amd64 --pull
 	fyne-cross android -arch=arm,arm64
 .PHONY: build
 

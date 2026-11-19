@@ -7,6 +7,22 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-11-19
+
+### Changed
+
+- Upgrade UI toolkit from Fyne v2.8.0 to v2.8.2.
+
+### Fixed
+
+- Linux `make install` and `make user-install` failed on the v1.4.1 tarball because that package was built with a Fyne CLI older than v1.7.3. The old CLI wrote the icon filename without `.png`. Release builds now pull `fyneio/fyne-cross-images:linux`, whose Fyne CLI v1.7.3 writes `com.gopdgui.app.png`. The desktop entry stays `Icon=com.gopdgui.app`. (#9)
+
+### Security
+
+- Update `golang.org/x/crypto` to v0.55.0 (CVE-2026-56854) and `golang.org/x/image` to v0.45.0 (CVE-2026-46599, CVE-2026-33809, and related TIFF, WebP, and BMP issues).
+
+## [1.4.1] - 2026-07-31
+
 ### Added
 
 - Automated GitHub Releases on version tags (`v*`) via fyne-cross + GoReleaser.
@@ -25,6 +41,10 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 ### Fixed
 
 - **Android uploads** no longer fail with `open /document/primary%3A…: no such file or directory` when picking photos via the Storage Access Framework. Content URIs are streamed into a temp file before `go-pd` upload. (#5)
+
+### Notes
+
+- Tag `v1.4.0` was created the same day but not published. The release workflow failed on that tag; `v1.4.1` is the build that shipped.
 
 ## [1.3.0] - 2026-07-31
 
@@ -78,6 +98,9 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 - Copy link button and result hyperlink.
 - Fyne-based desktop/mobile packaging via fyne-cross.
 
+[Unreleased]: https://github.com/ManuelReschke/go-pd-gui/compare/v1.4.2...HEAD
+[1.4.2]: https://github.com/ManuelReschke/go-pd-gui/releases/tag/v1.4.2
+[1.4.1]: https://github.com/ManuelReschke/go-pd-gui/releases/tag/v1.4.1
 [1.3.0]: https://github.com/ManuelReschke/go-pd-gui/releases/tag/v1.3.0
 [1.2.0]: https://github.com/ManuelReschke/go-pd-gui/releases/tag/v1.2.0
 [1.1.0]: https://github.com/ManuelReschke/go-pd-gui/releases/tag/v1.1.0

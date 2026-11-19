@@ -39,7 +39,9 @@ jobs:
         run: |
           set -euo pipefail
           fyne-cross windows -arch=amd64,386
-          fyne-cross linux -arch=amd64
+          # Image fyneio/fyne-cross-images:linux ships Fyne CLI v1.7.3+, which
+          # writes the pixmap filename with .png. v1.4.1 was packaged before that (#9).
+          fyne-cross linux -arch=amd64 --pull
           fyne-cross android -arch=arm,arm64
 
       - name: Stage release assets

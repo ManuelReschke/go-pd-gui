@@ -4,7 +4,7 @@ Website = "https://github.com/ManuelReschke/go-pd-gui"
 Icon = "Icon.png"
 Name = "DRAINY"
 ID = "com.gopdgui.app"
-Version = "1.3.0"
+Version = "1.4.2"
 Build = 126
 
 [Migrations]
